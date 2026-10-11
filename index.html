@@ -8,6 +8,7 @@
 <title>Pura Anniversary</title>
 <style>
   *,*::before,*::after{ box-sizing:border-box; }
+  [hidden]{ display:none !important; }
   html,body{ margin:0; padding:0; min-height:100%; }
   body{
     font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -504,7 +505,6 @@
   <div class="backdrop" aria-hidden="true"></div>
   <div class="snow" id="snow" aria-hidden="true"></div>
 
-  <!-- ============ WELCOME / SIGN-IN OVERLAY ============ -->
   <div class="gate" id="welcomeOverlay" role="dialog" aria-modal="true" aria-label="Sign in">
     <div class="gate-card">
       <h2 class="gate-title">Pura Anniversary</h2>
@@ -525,7 +525,6 @@
     </div>
   </div>
 
-  <!-- ============ PASSCODE GATE ============ -->
   <div class="gate hidden" id="gate" role="dialog" aria-modal="true" aria-label="Authentication required" style="display:none;">
     <div class="gate-card">
       <h2 class="gate-title" id="gateTitle">Enter Passcode</h2>
@@ -610,7 +609,6 @@
     </div>
   </div>
 
-  <!-- ============ SETUP WIZARD ============ -->
   <div class="setup-overlay" id="setupOverlay" role="dialog" aria-modal="true" hidden>
     <div class="setup-card">
       <div class="setup-step" data-step="choose">
@@ -683,7 +681,6 @@
     </div>
   </div>
 
-  <!-- ============ MAIN APP ============ -->
   <main class="app" id="app">
     <section class="panel">
       <button class="settings-btn" id="settingsBtn" type="button" aria-label="Settings">
@@ -722,7 +719,6 @@
     </section>
   </main>
 
-  <!-- ============ SETTINGS ============ -->
   <div class="settings-overlay" id="settingsOverlay" role="dialog" aria-modal="true">
     <div class="settings-card">
       <div class="sv" data-sv="main">
@@ -1074,7 +1070,6 @@
     </div>
   </div>
 
-  <!-- ============ DEV / EXTERNAL / IMPORT OVERLAYS ============ -->
   <div class="export-overlay" id="devOverlay" role="dialog" aria-modal="true">
     <div class="export-card">
       <div id="devLockedView">
@@ -1167,7 +1162,6 @@
     </div>
   </div>
 
-  <!-- ============ SHEETS ============ -->
   <div class="sheet-overlay" id="menuOverlay" role="dialog" aria-modal="true">
     <div class="sheet">
       <div class="sheet-handle"></div>
@@ -1290,7 +1284,6 @@
     </div>
   </div>
 
-  <!-- Firebase SDK (compat builds expose a global `firebase` object) -->
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
@@ -1306,7 +1299,6 @@
     throw new Error('Framed');
   }
 
-  /* ============ FIREBASE INIT ============ */
   var firebaseConfig = {
     apiKey: "AIzaSyBRN9M2GY5LubEttduDX9EmjxRgT-S86kY",
     authDomain: "pura-anniversary.firebaseapp.com",
@@ -1326,7 +1318,6 @@
     console.error('Firebase init failed:', e);
   }
 
-  /* ============ CONSTANTS ============ */
   var KEY_BIO_CRED = 'pura_bio_cred';
   var KEY_LOCK_STATE = 'pura_lock_state';
   var KEY_EXPORT_PREF = 'pura_export_pref';
@@ -1344,13 +1335,11 @@
   var LAZY_BATCH = 60;
   var MAGIC = 'dHVya21lbmlzdGFuMjAyNg==';
 
-  /* ============ STORAGE BANNER ============ */
   var storageBanner = document.getElementById('storageBanner');
   var storageBannerTitle = document.getElementById('storageBannerTitle');
   var storageBannerText = document.getElementById('storageBannerText');
   var storageBannerDismiss = document.getElementById('storageBannerDismiss');
   var bannerDismissed = false;
-  var lastFirestoreWriteOK = true;
 
   function showStorageError(title, text) {
     if (bannerDismissed) return;
@@ -1363,10 +1352,8 @@
     storageBanner.classList.remove('show');
   });
 
-  /* ============ SAFE LOCAL STORAGE (for non-vault keys only) ============ */
   function safeGetItem(key) {
-    try { return localStorage.getItem(key); }
-    catch (e) { return null; }
+    try { return localStorage.getItem(key); } catch (e) { return null; }
   }
   function safeSetItem(key, value) {
     try {
@@ -1379,7 +1366,6 @@
     catch (e) { return false; }
   }
 
-  /* ============ CRYPTO ============ */
   function b64(u8) {
     var s = '';
     for (var i = 0; i < u8.length; i++) s += String.fromCharCode(u8[i]);
@@ -1489,7 +1475,6 @@
     return weak.indexOf(code) !== -1;
   }
 
-  /* ============ VAULT STATE (in memory) ============ */
   var vaultCEK = null;
   var vaultPayload = null;
   var vaultRawMemory = null;
@@ -1569,7 +1554,6 @@
     return saveChain;
   }
 
-  /* ============ LOCK STATE ============ */
   function getLockState() {
     try { return JSON.parse(safeGetItem(KEY_LOCK_STATE)) || { failed: 0, level: 0, until: 0, perm: false }; }
     catch (e) { return { failed: 0, level: 0, until: 0, perm: false }; }
@@ -1585,7 +1569,6 @@
     return dur;
   }
 
-  /* ============ PAYLOAD ACCESSORS ============ */
   function getMode() { return currentMode || 'passcode'; }
   function isPasswordMode() { return getMode() !== 'passcode'; }
   function getNotes() { return vaultPayload && vaultPayload.notes ? vaultPayload.notes : {}; }
@@ -1621,7 +1604,6 @@
     return Math.floor(m / 60) + 'h ' + (m % 60) + 'm';
   }
 
-  /* ============ DEVICE DETECTION ============ */
   var ua = navigator.userAgent || '';
   var uaLower = ua.toLowerCase();
   var isIOSReal = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -1747,7 +1729,6 @@
     }
   }
 
-  /* ============ SNOW ============ */
   var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   (function buildSnow() {
     if (reduceMotion) return;
@@ -1770,7 +1751,6 @@
     snowEl.appendChild(frag);
   })();
 
-  /* ============ PW TOOLS ============ */
   document.addEventListener('click', function (e) {
     var toggle = e.target.closest('[data-pw-toggle]');
     if (toggle) {
@@ -1808,7 +1788,6 @@
     }
   });
 
-  /* ============ DOM REFS ============ */
   var welcomeOverlay = document.getElementById('welcomeOverlay');
   var btnSignIn = document.getElementById('btnSignIn');
   var btnLogIn = document.getElementById('btnLogIn');
@@ -2115,7 +2094,6 @@
     }
   });
 
-  /* ============ WELCOME / SIGN-IN ============ */
   function showWelcome() {
     welcomeOverlay.style.display = '';
     welcomeOverlay.classList.remove('hidden');
@@ -2196,7 +2174,6 @@
   btnSignIn.addEventListener('click', function () { handleGoogleSignIn('signin'); });
   btnLogIn.addEventListener('click', function () { handleGoogleSignIn('login'); });
 
-  /* ============ SETUP WIZARD ============ */
   var setupOverlay = document.getElementById('setupOverlay');
   var setupSteps = setupOverlay.querySelectorAll('.setup-step');
   var setupBack = document.getElementById('setupBack');
@@ -2398,7 +2375,6 @@
     armIdle();
   });
 
-  /* ============ IDLE / VISIBILITY ============ */
   var idleTimer = null;
   var lastActivityReset = 0;
   var hiddenAt = null;
@@ -2455,7 +2431,6 @@
     else noteActivity();
   });
 
-  /* ============ ANNIVERSARIES ============ */
   var FIRST_YEAR = 2026, MONTH = 8, DAY = 23, TOTAL = 67, DEEP_TIER = 31;
   var RETIREMENT_DATE = new Date(2026, 9, 8);
   var RETIREMENT_LABEL = 'Retirement Date';
@@ -2643,7 +2618,6 @@
   });
   clearEl.addEventListener('click', function () { searchEl.value = ''; applyFilter(); searchEl.focus(); });
 
-  /* ============ MENU / EDITOR / VIEWER ============ */
   var menuOverlay = document.getElementById('menuOverlay');
   var menuTitle = document.getElementById('menuTitle');
   var menuSub = document.getElementById('menuSub');
@@ -2834,7 +2808,6 @@
     }
   }
 
-  /* ============ SETTINGS ============ */
   var settingsBtn = document.getElementById('settingsBtn');
   var settingsOverlay = document.getElementById('settingsOverlay');
   var closeSettings = document.getElementById('closeSettings');
@@ -3329,7 +3302,6 @@
     setTimeout(function () { bioMsg.textContent = ''; }, 2500);
   });
 
-  /* ============ DATA ============ */
   var exportBtn = document.getElementById('exportBtn');
   var importBtn = document.getElementById('importBtn');
   var importFile = document.getElementById('importFile');
@@ -3523,7 +3495,6 @@
     lockMsg.textContent = 'Backup downloaded.';
   });
 
-  /* ============ DEVICE INFO ============ */
   var deviceInfo = document.getElementById('deviceInfo');
   function detectDeviceModel() {
     var u = navigator.userAgent || '';
@@ -3587,7 +3558,6 @@
     deviceInfo.innerHTML = html;
   }
 
-  /* ============ DEV MODE / EXTERNAL ============ */
   var openDevBtn = document.getElementById('openDevBtn');
   var devOverlay = document.getElementById('devOverlay');
   var devLockedView = document.getElementById('devLockedView');
@@ -3691,7 +3661,6 @@
   closeExternal.addEventListener('click', closeExternalDialog);
   externalOverlay.addEventListener('click', function (e) { if (e.target === externalOverlay) closeExternalDialog(); });
 
-  /* ============ SIGN OUT & FACTORY RESET ============ */
   var signOutBtn = document.getElementById('signOutBtn');
   var accountHint = document.getElementById('accountHint');
   var factoryResetBtn = document.getElementById('factoryResetBtn');
@@ -3724,7 +3693,6 @@
     setTimeout(function () { location.reload(); }, 900);
   });
 
-  /* ============ REFRESH ALL SETTINGS UI ============ */
   function refreshAllSettingsUI() {
     refreshRevertBox();
     refreshModeDisplay();
@@ -3768,7 +3736,6 @@
     }
   });
 
-  /* ============ BOOTSTRAP ============ */
   switchView('anniversary');
 
   if (!fbAuth) {
@@ -3789,7 +3756,6 @@
       setWelcomeMsg('Loading your vault…', 'warn');
       var raw = await loadVaultFromFirestore(user.uid);
       if (!raw) {
-        // No vault — show welcome with "Sign in" prompt
         showWelcome();
         setWelcomeMsg('Tap Sign in to set up your vault.', 'warn');
         return;
