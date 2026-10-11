@@ -35,23 +35,18 @@
     font-size:14px; line-height:1; cursor:pointer;
   }
   .toast{
-    position:fixed;
-    bottom:24px; left:50%;
+    position:fixed; bottom:24px; left:50%;
     transform:translateX(-50%) translateY(20px);
-    padding:12px 18px;
-    border-radius:12px;
+    padding:12px 18px; border-radius:12px;
     background:rgba(30,30,36,.95);
     border:1px solid rgba(255,255,255,.15);
-    color:#fff;
-    font-size:13px; letter-spacing:.02em;
+    color:#fff; font-size:13px; letter-spacing:.02em;
     box-shadow:0 12px 30px -8px rgba(0,0,0,.85);
-    z-index:400;
-    opacity:0; pointer-events:none;
+    z-index:400; opacity:0; pointer-events:none;
     transition:opacity .25s ease, transform .25s ease;
     -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px);
     max-width:min(340px, calc(100vw - 40px));
-    text-align:center;
-    line-height:1.5;
+    text-align:center; line-height:1.5;
   }
   .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
   .backdrop{ position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none; }
@@ -279,6 +274,9 @@
   .setup-option.tag-high .setup-option-title::after{ content:"RECOMMENDED"; display:inline-block; margin-left:8px;
     padding:2px 6px; border-radius:5px; font-size:9px; letter-spacing:.14em;
     background:rgba(142,240,181,.15); color:#8ef0b5; vertical-align:middle; }
+  .setup-option.tag-legacy .setup-option-title::after{ content:"LEGACY"; display:inline-block; margin-left:8px;
+    padding:2px 6px; border-radius:5px; font-size:9px; letter-spacing:.14em;
+    background:rgba(255,196,107,.15); color:#ffc46b; vertical-align:middle; }
   .setup-step{ text-align:left; }
   .setup-step[hidden]{ display:none; }
   .setup-back{ display:inline-flex; align-items:center; gap:4px; margin:0 0 12px; padding:6px 10px 6px 6px;
@@ -501,6 +499,33 @@
   .export-actions{ display:flex; gap:10px; margin-top:18px; }
   .export-actions .btn{ margin-top:0; }
   #lazySentinel{ height:1px; flex:0 0 auto; }
+  /* ---- Pattern grid ---- */
+  .pattern-wrap{ display:flex; flex-direction:column; align-items:center; gap:10px; margin-top:6px; }
+  .pattern-grid{
+    position:relative; width:240px; height:240px; margin:0 auto;
+    display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr);
+    gap:6px; padding:14px; border-radius:20px;
+    border:1px solid rgba(255,255,255,.1);
+    background:rgba(255,255,255,.03);
+    touch-action:none; -webkit-user-select:none; user-select:none;
+    cursor:crosshair;
+  }
+  .pattern-svg{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:2; border-radius:inherit; }
+  .pattern-dot{ position:relative; display:grid; place-items:center; z-index:1; pointer-events:none; }
+  .pattern-dot::before{
+    content:""; width:18px; height:18px; border-radius:50%;
+    background:rgba(255,255,255,.12);
+    border:2px solid rgba(255,255,255,.3);
+    transition:all .15s ease;
+  }
+  .pattern-dot.active::before{
+    background:#fff; border-color:#fff;
+    box-shadow:0 0 14px rgba(255,255,255,.7);
+    transform:scale(1.2);
+  }
+  .pattern-msg{ text-align:center; font-size:12px; letter-spacing:.04em; min-height:16px; color:#ff8a8a; margin:0; }
+  .pattern-msg.warn{ color:#ffc46b; }
+  .pattern-msg.ok{ color:#8ef0b5; }
   @media (max-width:520px){
     .app{ padding:10px; }
     .panel{ height:calc(100vh - 20px); height:calc(100dvh - 20px); border-radius:22px; padding:18px 14px 10px; }
@@ -520,6 +545,7 @@
     .settings-card{ padding:18px; }
     .backup-code{ font-size:13px; letter-spacing:.1em; padding:16px 10px; }
     .storage-banner{ font-size:11.5px; padding:10px 12px; }
+    .pattern-grid{ width:210px; height:210px; }
   }
   @media (prefers-reduced-motion:reduce){
     *,*::before,*::after{ animation:none !important; transition:none !important; }
@@ -571,6 +597,15 @@
         <div class="dots" id="dots">
           <span class="pip"></span><span class="pip"></span><span class="pip"></span>
           <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+        </div>
+        <div class="pattern-wrap" id="patternWrap" style="display:none;">
+          <div class="pattern-grid" id="gatePatternGrid">
+            <svg class="pattern-svg"></svg>
+            <div class="pattern-dot"></div><div class="pattern-dot"></div><div class="pattern-dot"></div>
+            <div class="pattern-dot"></div><div class="pattern-dot"></div><div class="pattern-dot"></div>
+            <div class="pattern-dot"></div><div class="pattern-dot"></div><div class="pattern-dot"></div>
+          </div>
+          <p class="pattern-msg" id="gatePatternMsg"></p>
         </div>
         <div class="keypad" id="keypad">
           <button class="key" data-k="1" type="button">1</button>
@@ -667,6 +702,10 @@
             <span class="setup-option-title">Ultra Password</span>
             <span class="setup-option-desc">128+ characters. Maximum security.</span>
           </button>
+          <button class="setup-option tag-legacy" data-type="legacy" type="button">
+            <span class="setup-option-title">Legacy / Other</span>
+            <span class="setup-option-desc">Pattern or 4-digit PIN. Easier to enter.</span>
+          </button>
         </div>
       </div>
       <div class="setup-step" data-step="enter" hidden>
@@ -694,10 +733,63 @@
         <button class="btn" id="setupSubmit" type="button">Continue</button>
         <p class="form-msg" id="setupMsg"></p>
       </div>
+      <div class="setup-step" data-step="legacy-choice" hidden>
+        <button class="setup-back" id="legacyChoiceBack" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          Back
+        </button>
+        <div class="setup-head" style="margin-bottom:14px;">
+          <h2>Legacy / Other</h2>
+          <p>Choose a legacy credential. These are faster to enter but less secure than passwords.</p>
+        </div>
+        <div class="setup-options">
+          <button class="setup-option" data-legacy="pattern" type="button">
+            <span class="setup-option-title">Pattern</span>
+            <span class="setup-option-desc">Draw a pattern on a 3×3 grid. Minimum 4 dots.</span>
+          </button>
+          <button class="setup-option" data-legacy="pin4" type="button">
+            <span class="setup-option-title">4-digit PIN</span>
+            <span class="setup-option-desc">Just four digits. Quick to enter.</span>
+          </button>
+        </div>
+      </div>
+      <div class="setup-step" data-step="legacy-enter" hidden>
+        <button class="setup-back" id="legacyEnterBack" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          Back
+        </button>
+        <div class="setup-head" style="margin-bottom:14px;">
+          <h2 id="legacyEnterTitle">Draw Pattern</h2>
+          <p id="legacyEnterDesc">Connect at least 4 dots.</p>
+        </div>
+        <div id="legacyPatternForm">
+          <div class="pattern-wrap">
+            <div class="pattern-grid" id="setupPatternGrid">
+              <svg class="pattern-svg"></svg>
+              <div class="pattern-dot"></div><div class="pattern-dot"></div><div class="pattern-dot"></div>
+              <div class="pattern-dot"></div><div class="pattern-dot"></div><div class="pattern-dot"></div>
+              <div class="pattern-dot"></div><div class="pattern-dot"></div><div class="pattern-dot"></div>
+            </div>
+            <p class="pattern-msg" id="setupPatternMsg"></p>
+          </div>
+        </div>
+        <div id="legacyPin4Form" style="display:none;">
+          <div class="field">
+            <label>New 4-digit PIN</label>
+            <input id="setupPin4" type="password" inputmode="numeric" maxlength="4" placeholder="••••" class="digits">
+          </div>
+          <div class="field">
+            <label>Confirm PIN</label>
+            <input id="setupPin4Cfm" type="password" inputmode="numeric" maxlength="4" placeholder="••••" class="digits">
+          </div>
+          <button class="btn" id="setupPin4Submit" type="button">Continue</button>
+          <p class="form-msg" id="setupPin4Msg"></p>
+        </div>
+      </div>
       <div class="setup-step" data-step="backup" hidden>
         <div class="setup-head">
           <h2>Backup Code</h2>
-          <p>Save this code somewhere safe. It's the only way to recover access if you forget your password. It will <b>not</b> be shown again.</p>
+          <p>Save this code somewhere safe. It's the only way to recover access if you forget your credential. It will <b>not</b> be shown again.</p>
         </div>
         <div class="backup-code" id="setupBackupCode">----</div>
         <button class="btn ghost small" id="setupCopyBackup" type="button" style="margin-bottom:10px;">Copy to Clipboard</button>
@@ -817,6 +909,9 @@
           <h2>Security</h2>
         </div>
         <div class="subbody">
+          <div id="legacyChangeMsg" style="display:none;margin-bottom:12px;">
+            <p class="mode-hint warn">You're using a legacy credential (pattern or PIN). To change it, go to Encryption → Switch to Passcode Mode or Switch to Password Mode.</p>
+          </div>
           <form id="changeForm" autocomplete="off">
             <div class="field">
               <label for="curPass" id="chgCurLabel">Current Passcode</label>
@@ -1392,8 +1487,10 @@
 
   var DEFAULT_ITERATIONS = 600000;
   var MIN_PASSCODE_LEN = 6;
+  var MIN_PIN4_LEN = 4;
   var MIN_PASSWORD_LEN = 32;
   var MIN_ULTRA_LEN = 128;
+  var MIN_PATTERN_DOTS = 4;
   var REVERT_WINDOW_MS = 72 * 60 * 60 * 1000;
   var MAX_TRIES = 3;
   var LOCKOUT_DURATIONS = [15 * 60 * 1000, 30 * 60 * 1000, 24 * 60 * 60 * 1000];
@@ -1433,36 +1530,15 @@
     }, 2400);
   }
 
-  function safeGetItem(key) {
-    try { return localStorage.getItem(key); } catch (e) { return null; }
-  }
+  function safeGetItem(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
   function safeSetItem(key, value) {
-    try {
-      localStorage.setItem(key, value);
-      return localStorage.getItem(key) === value;
-    } catch (e) { return false; }
+    try { localStorage.setItem(key, value); return localStorage.getItem(key) === value; } catch (e) { return false; }
   }
-  function safeRemoveItem(key) {
-    try { localStorage.removeItem(key); return true; }
-    catch (e) { return false; }
-  }
+  function safeRemoveItem(key) { try { localStorage.removeItem(key); return true; } catch (e) { return false; } }
 
-  function b64(u8) {
-    var s = '';
-    for (var i = 0; i < u8.length; i++) s += String.fromCharCode(u8[i]);
-    return btoa(s);
-  }
-  function unb64(str) {
-    var s = atob(str);
-    var u8 = new Uint8Array(s.length);
-    for (var i = 0; i < s.length; i++) u8[i] = s.charCodeAt(i);
-    return u8;
-  }
-  function randBytes(len) {
-    var u8 = new Uint8Array(len);
-    crypto.getRandomValues(u8);
-    return u8;
-  }
+  function b64(u8) { var s = ''; for (var i = 0; i < u8.length; i++) s += String.fromCharCode(u8[i]); return btoa(s); }
+  function unb64(str) { var s = atob(str); var u8 = new Uint8Array(s.length); for (var i = 0; i < s.length; i++) u8[i] = s.charCodeAt(i); return u8; }
+  function randBytes(len) { var u8 = new Uint8Array(len); crypto.getRandomValues(u8); return u8; }
 
   async function deriveKEK(passphrase, saltBytes, iterations) {
     var enc = new TextEncoder();
@@ -1472,9 +1548,7 @@
       km, { name: 'AES-GCM', length: 256 }, false, ['wrapKey', 'unwrapKey']
     );
   }
-  async function generateCEK() {
-    return crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
-  }
+  async function generateCEK() { return crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']); }
   async function wrapCEK(cek, kek) {
     var iv = randBytes(12);
     var wrapped = await crypto.subtle.wrapKey('raw', cek, kek, { name: 'AES-GCM', iv: iv });
@@ -1483,10 +1557,8 @@
   async function unwrapCEK(wrappedBlob, kek) {
     var iv = unb64(wrappedBlob.iv);
     var ct = unb64(wrappedBlob.ct);
-    return crypto.subtle.unwrapKey(
-      'raw', ct, kek, { name: 'AES-GCM', iv: iv },
-      { name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']
-    );
+    return crypto.subtle.unwrapKey('raw', ct, kek, { name: 'AES-GCM', iv: iv },
+      { name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
   }
   async function encryptWithCEK(cek, obj) {
     var iv = randBytes(12);
@@ -1505,10 +1577,8 @@
     if (material.byteLength < 32) {
       var salt = randBytes(16);
       var km = await crypto.subtle.importKey('raw', material, { name: 'PBKDF2' }, false, ['deriveKey']);
-      return crypto.subtle.deriveKey(
-        { name: 'PBKDF2', salt: salt, iterations: 100000, hash: 'SHA-256' },
-        km, { name: 'AES-GCM', length: 256 }, false, ['wrapKey', 'unwrapKey']
-      );
+      return crypto.subtle.deriveKey({ name: 'PBKDF2', salt: salt, iterations: 100000, hash: 'SHA-256' },
+        km, { name: 'AES-GCM', length: 256 }, false, ['wrapKey', 'unwrapKey']);
     }
     return crypto.subtle.importKey('raw', material.slice(0, 32), { name: 'AES-GCM' }, false, ['wrapKey', 'unwrapKey']);
   }
@@ -1536,9 +1606,7 @@
     for (var i = 0; i < chars; i++) out += BACKUP_CHARSET[buf[i] % BACKUP_CHARSET.length];
     return out.match(/.{1,4}/g).join('-');
   }
-  function normalizeBackupCode(str) {
-    return String(str || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-  }
+  function normalizeBackupCode(str) { return String(str || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
 
   function isWeakPasscode(code) {
     if (!/^\d{6}$/.test(code)) return true;
@@ -1556,6 +1624,106 @@
     return weak.indexOf(code) !== -1;
   }
 
+  function isWeakPin4(code) {
+    if (!/^\d{4}$/.test(code)) return true;
+    if (/^(\d)\1{3}$/.test(code)) return true;
+    var d = code.split('').map(Number);
+    if (d[1] === d[0]+1 && d[2] === d[1]+1 && d[3] === d[2]+1) return true;
+    if (d[1] === d[0]-1 && d[2] === d[1]-1 && d[3] === d[2]-1) return true;
+    var weak = ['0000','1111','2222','3333','4444','5555','6666','7777','8888','9999',
+      '1234','4321','1212','2121','1122','2211','1010','0101','6969','9696','2580','1379','0123','9876'];
+    return weak.indexOf(code) !== -1;
+  }
+
+  /* ============ PATTERN GRID ENGINE ============ */
+  function initPatternGrid(gridEl, onComplete) {
+    var dots = gridEl.querySelectorAll('.pattern-dot');
+    var svg = gridEl.querySelector('.pattern-svg');
+    var sequence = [];
+    var isDrawing = false;
+    var rects = [];
+    var gridRect = null;
+
+    function updateRects() {
+      gridRect = gridEl.getBoundingClientRect();
+      rects = [];
+      for (var i = 0; i < dots.length; i++) {
+        var r = dots[i].getBoundingClientRect();
+        rects.push({ x: r.left + r.width/2, y: r.top + r.height/2, r: Math.max(r.width, r.height)/2, el: dots[i] });
+      }
+    }
+    function hitTest(x, y) {
+      for (var i = 0; i < rects.length; i++) {
+        var dx = x - rects[i].x;
+        var dy = y - rects[i].y;
+        if (Math.sqrt(dx*dx + dy*dy) < rects[i].r * 1.15) return i;
+      }
+      return -1;
+    }
+    function drawLines() {
+      if (!gridRect) return;
+      var html = '';
+      for (var i = 1; i < sequence.length; i++) {
+        var a = rects[sequence[i-1]];
+        var b = rects[sequence[i]];
+        var x1 = a.x - gridRect.left;
+        var y1 = a.y - gridRect.top;
+        var x2 = b.x - gridRect.left;
+        var y2 = b.y - gridRect.top;
+        html += '<line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'" stroke="rgba(255,255,255,.85)" stroke-width="3" stroke-linecap="round"/>';
+      }
+      svg.innerHTML = html;
+    }
+    function addDot(idx) {
+      if (sequence.indexOf(idx) !== -1) return;
+      sequence.push(idx);
+      dots[idx].classList.add('active');
+      drawLines();
+    }
+    function reset() {
+      sequence = [];
+      svg.innerHTML = '';
+      for (var i = 0; i < dots.length; i++) dots[i].classList.remove('active');
+      isDrawing = false;
+    }
+    function handleStart(e) {
+      e.preventDefault();
+      updateRects();
+      isDrawing = true;
+      reset();
+      sequence = [];
+      var idx = hitTest(e.clientX, e.clientY);
+      if (idx !== -1) addDot(idx);
+      try { gridEl.setPointerCapture(e.pointerId); } catch (err) {}
+    }
+    function handleMove(e) {
+      if (!isDrawing) return;
+      e.preventDefault();
+      var idx = hitTest(e.clientX, e.clientY);
+      if (idx !== -1) addDot(idx);
+    }
+    function handleEnd(e) {
+      if (!isDrawing) return;
+      isDrawing = false;
+      if (sequence.length > 0) {
+        onComplete(sequence.slice(), gridRect);
+      }
+    }
+
+    gridEl.addEventListener('pointerdown', handleStart);
+    gridEl.addEventListener('pointermove', handleMove);
+    gridEl.addEventListener('pointerup', handleEnd);
+    gridEl.addEventListener('pointercancel', handleEnd);
+    gridEl.addEventListener('pointerleave', function (e) {
+      if (isDrawing) handleEnd(e);
+    });
+
+    return {
+      reset: reset,
+      updateRects: updateRects
+    };
+  }
+
   var vaultCEK = null;
   var vaultPayload = null;
   var vaultRawMemory = null;
@@ -1567,24 +1735,14 @@
   var firestoreWriteQueue = Promise.resolve();
   var lastFirestoreWriteOK = true;
 
-  function loadVaultRaw() {
-    return vaultRawMemory;
-  }
-
+  function loadVaultRaw() { return vaultRawMemory; }
   function saveVaultRaw(obj) {
-    try {
-      vaultRawMemory = JSON.parse(JSON.stringify(obj));
-    } catch (e) {
-      showStorageError('Serialization failed', 'Could not prepare vault: ' + (e.message || e));
-      return false;
-    }
-    if (isGuest) {
-      return safeSetItem(KEY_GUEST_VAULT, JSON.stringify(vaultRawMemory));
-    }
+    try { vaultRawMemory = JSON.parse(JSON.stringify(obj)); }
+    catch (e) { showStorageError('Serialization failed', 'Could not prepare vault: ' + (e.message || e)); return false; }
+    if (isGuest) return safeSetItem(KEY_GUEST_VAULT, JSON.stringify(vaultRawMemory));
     queueFirestoreWrite();
     return true;
   }
-
   function queueFirestoreWrite() {
     if (!fbUser || !fbDb || !vaultRawMemory) return;
     var payload = JSON.stringify(vaultRawMemory);
@@ -1593,15 +1751,13 @@
         vault: payload,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       }, { merge: true });
-    }).then(function () {
-      lastFirestoreWriteOK = true;
-    }).catch(function (err) {
-      lastFirestoreWriteOK = false;
-      console.error('Firestore write failed:', err);
-      showStorageError('Cloud save failed', 'Could not save to Firestore: ' + (err.message || err));
-    });
+    }).then(function () { lastFirestoreWriteOK = true; })
+      .catch(function (err) {
+        lastFirestoreWriteOK = false;
+        console.error('Firestore write failed:', err);
+        showStorageError('Cloud save failed', 'Could not save to Firestore: ' + (err.message || err));
+      });
   }
-
   async function loadVaultFromFirestore(uid) {
     try {
       var doc = await fbDb.collection('users').doc(uid).get();
@@ -1609,12 +1765,8 @@
       var data = doc.data();
       if (!data || typeof data.vault !== 'string') return null;
       return JSON.parse(data.vault);
-    } catch (e) {
-      console.error('Firestore read failed:', e);
-      return null;
-    }
+    } catch (e) { console.error('Firestore read failed:', e); return null; }
   }
-
   async function waitForCloudSync() {
     try { await firestoreWriteQueue; } catch (e) {}
     return lastFirestoreWriteOK;
@@ -1622,23 +1774,14 @@
 
   var saveChain = Promise.resolve();
   function saveVault() {
-    if (isGuest) {
-      if (!vaultPayload) return Promise.resolve(false);
-      return Promise.resolve(saveVaultRaw(vaultPayload));
-    }
+    if (isGuest) { if (!vaultPayload) return Promise.resolve(false); return Promise.resolve(saveVaultRaw(vaultPayload)); }
     if (!vaultCEK || !vaultPayload || !vaultRawMemory) return Promise.resolve(false);
     var snap = JSON.parse(JSON.stringify(vaultPayload));
     var rawSnap = JSON.parse(JSON.stringify(vaultRawMemory));
     var cek = vaultCEK;
     saveChain = saveChain.then(function () {
-      return encryptWithCEK(cek, snap).then(function (enc) {
-        rawSnap.enc = enc;
-        return saveVaultRaw(rawSnap);
-      });
-    }).catch(function (e) {
-      console.error('Vault save failed:', e);
-      return false;
-    });
+      return encryptWithCEK(cek, snap).then(function (enc) { rawSnap.enc = enc; return saveVaultRaw(rawSnap); });
+    }).catch(function (e) { console.error('Vault save failed:', e); return false; });
     return saveChain;
   }
 
@@ -1659,6 +1802,11 @@
 
   function getMode() { return currentMode || 'passcode'; }
   function isPasswordMode() { return getMode() !== 'passcode' && getMode() !== 'guest'; }
+  function getRequiredLen() {
+    var m = getMode();
+    if (m === 'pin4') return MIN_PIN4_LEN;
+    return MIN_PASSCODE_LEN;
+  }
   function getNotes() { return vaultPayload && vaultPayload.notes ? vaultPayload.notes : {}; }
   function setNotes(o) { if (vaultPayload) { vaultPayload.notes = o; saveVault(); } }
   function getCapsules() { return vaultPayload && vaultPayload.capsules ? vaultPayload.capsules : []; }
@@ -1681,17 +1829,10 @@
     if (!vaultRawMemory || !vaultRawMemory.kek || !vaultRawMemory.kek.pass || !vaultRawMemory.kek.pass.prev) return null;
     var p = vaultRawMemory.kek.pass.prev;
     var remaining = REVERT_WINDOW_MS - (Date.now() - p.time);
-    if (remaining <= 0) {
-      delete vaultRawMemory.kek.pass.prev;
-      queueFirestoreWrite();
-      return null;
-    }
+    if (remaining <= 0) { delete vaultRawMemory.kek.pass.prev; queueFirestoreWrite(); return null; }
     return { remaining: remaining };
   }
-  function formatRemaining(ms) {
-    var m = Math.floor(ms / 60000);
-    return Math.floor(m / 60) + 'h ' + (m % 60) + 'm';
-  }
+  function formatRemaining(ms) { var m = Math.floor(ms / 60000); return Math.floor(m / 60) + 'h ' + (m % 60) + 'm'; }
 
   var ua = navigator.userAgent || '';
   var uaLower = ua.toLowerCase();
@@ -1729,12 +1870,8 @@
     if (!webAuthnSupported) return { blocked: true, reason: 'Not Supported', detail: 'This browser does not support Web Authentication.' };
     return { blocked: false };
   }
-  function hasBioCred() {
-    try { return !!JSON.parse(safeGetItem(KEY_BIO_CRED)); } catch (e) { return false; }
-  }
-  function getBioCred() {
-    try { return JSON.parse(safeGetItem(KEY_BIO_CRED)); } catch (e) { return null; }
-  }
+  function hasBioCred() { try { return !!JSON.parse(safeGetItem(KEY_BIO_CRED)); } catch (e) { return false; } }
+  function getBioCred() { try { return JSON.parse(safeGetItem(KEY_BIO_CRED)); } catch (e) { return null; } }
   function setBioCred(obj) { safeSetItem(KEY_BIO_CRED, JSON.stringify(obj)); }
   function clearBioCred() { safeRemoveItem(KEY_BIO_CRED); }
   function getRpId() { return location.hostname || 'localhost'; }
@@ -1789,16 +1926,11 @@
       if (block.blocked) throw { reason: block.reason, detail: block.detail };
       var cred = getBioCred();
       if (!cred || !cred.credentialId) throw { reason: 'Not set up' };
-      if (cred.mode === 'convenience') {
-        if (!vaultCEK) throw { reason: 'Session required' };
-        return vaultCEK;
-      }
+      if (cred.mode === 'convenience') { if (!vaultCEK) throw { reason: 'Session required' }; return vaultCEK; }
       if (!cred.prfSalt || !cred.wrapped || !cred.wrapped.iv || !cred.wrapped.ct) throw { reason: 'Biometric data corrupted' };
       var prfSalt, credId;
-      try {
-        prfSalt = unb64(cred.prfSalt);
-        credId = unb64(cred.credentialId);
-      } catch (parseErr) { throw { reason: 'Biometric data corrupted' }; }
+      try { prfSalt = unb64(cred.prfSalt); credId = unb64(cred.credentialId); }
+      catch (parseErr) { throw { reason: 'Biometric data corrupted' }; }
       var assertion = await navigator.credentials.get({
         publicKey: {
           challenge: randBytes(32),
@@ -1852,25 +1984,17 @@
     var copy = e.target.closest('[data-pw-copy]');
     if (copy) {
       var inp2 = document.getElementById(copy.getAttribute('data-pw-copy'));
-      if (!inp2 || !inp2.value) {
-        var old0 = copy.textContent;
-        copy.textContent = 'Empty';
-        setTimeout(function () { copy.textContent = old0; }, 1200);
-        return;
-      }
+      if (!inp2 || !inp2.value) { var old0 = copy.textContent; copy.textContent = 'Empty'; setTimeout(function () { copy.textContent = old0; }, 1200); return; }
       try {
         navigator.clipboard.writeText(inp2.value).then(function () {
-          var old1 = copy.textContent;
-          copy.textContent = 'Copied';
+          var old1 = copy.textContent; copy.textContent = 'Copied';
           setTimeout(function () { copy.textContent = old1; }, 1500);
         }).catch(function () {
-          var old2 = copy.textContent;
-          copy.textContent = 'Blocked';
+          var old2 = copy.textContent; copy.textContent = 'Blocked';
           setTimeout(function () { copy.textContent = old2; }, 1500);
         });
       } catch (err) {
-        var old3 = copy.textContent;
-        copy.textContent = 'Failed';
+        var old3 = copy.textContent; copy.textContent = 'Failed';
         setTimeout(function () { copy.textContent = old3; }, 1500);
       }
     }
@@ -1892,6 +2016,9 @@
   var dotsEl = document.getElementById('dots');
   var pipEls = dotsEl.querySelectorAll('.pip');
   var keypad = document.getElementById('keypad');
+  var patternWrap = document.getElementById('patternWrap');
+  var gatePatternGrid = document.getElementById('gatePatternGrid');
+  var gatePatternMsg = document.getElementById('gatePatternMsg');
   var passwordWrap = document.getElementById('passwordWrap');
   var passwordInput = document.getElementById('passwordInput');
   var passwordSubmitBtn = document.getElementById('passwordSubmitBtn');
@@ -1916,6 +2043,7 @@
   var entered = '';
   var verifying = false;
   var lockTicker = null;
+  var gatePatternCtl = null;
 
   function renderDots() {
     for (var i = 0; i < pipEls.length; i++) pipEls[i].classList.toggle('filled', i < entered.length);
@@ -1952,20 +2080,8 @@
     else { bioFaceLabel.textContent = 'Open with Face Recognition'; bioFingerLabel.textContent = 'Or use Fingerprint'; }
     if (!configured || !canUse) { bioWrap.style.display = 'none'; return; }
     bioWrap.style.display = '';
-    if (isGuest) {
-      bioFaceBtn.disabled = true; bioFingerBtn.disabled = true;
-      bioHint.textContent = 'Biometric requires a Google account.';
-      bioHint.style.color = '#ffc46b';
-      bioGateTestBadge.style.display = '';
-      return;
-    }
-    if (isTestMode()) {
-      bioFaceBtn.disabled = true; bioFingerBtn.disabled = true;
-      bioHint.textContent = 'Biometric is disabled while simulating a device.';
-      bioHint.style.color = '#ffc46b';
-      bioGateTestBadge.style.display = '';
-      return;
-    }
+    if (isGuest) { bioFaceBtn.disabled = true; bioFingerBtn.disabled = true; bioHint.textContent = 'Biometric requires a Google account.'; bioHint.style.color = '#ffc46b'; bioGateTestBadge.style.display = ''; return; }
+    if (isTestMode()) { bioFaceBtn.disabled = true; bioFingerBtn.disabled = true; bioHint.textContent = 'Biometric is disabled while simulating a device.'; bioHint.style.color = '#ffc46b'; bioGateTestBadge.style.display = ''; return; }
     bioGateTestBadge.style.display = 'none';
     if (block.blocked) {
       bioFaceBtn.disabled = true; bioFingerBtn.disabled = true;
@@ -1973,13 +2089,8 @@
       bioHint.style.color = '#ffc46b';
     } else {
       bioFaceBtn.disabled = false; bioFingerBtn.disabled = false;
-      if (prfMode) {
-        bioHint.textContent = 'Cryptographically bound. Your biometric unwraps the content key directly.';
-        bioHint.style.color = '#8ef0b5';
-      } else {
-        bioHint.textContent = 'Convenience unlock only (PRF unavailable). Requires prior unlock in this session.';
-        bioHint.style.color = 'rgba(244,244,246,.4)';
-      }
+      if (prfMode) { bioHint.textContent = 'Cryptographically bound. Your biometric unwraps the content key directly.'; bioHint.style.color = '#8ef0b5'; }
+      else { bioHint.textContent = 'Convenience unlock only (PRF unavailable). Requires prior unlock in this session.'; bioHint.style.color = 'rgba(244,244,246,.4)'; }
     }
   }
 
@@ -1994,17 +2105,47 @@
     else {
       if (mode === 'ultra') { gateTitle.textContent = 'Enter Ultra Password'; setGateSub(MIN_ULTRA_LEN + '+ characters required'); }
       else if (mode === 'password') { gateTitle.textContent = 'Enter Password'; setGateSub(MIN_PASSWORD_LEN + '+ characters required'); }
+      else if (mode === 'pin4') { gateTitle.textContent = 'Enter PIN'; setGateSub('4 digits required'); }
+      else if (mode === 'pattern') { gateTitle.textContent = 'Draw Pattern'; setGateSub('Connect at least 4 dots'); }
       else { gateTitle.textContent = 'Enter Passcode'; setGateSub('6 digits required'); }
     }
-    if (mode === 'passcode') {
+
+    // Show only the UI relevant to this mode
+    if (mode === 'pattern') {
+      keypad.style.display = 'none'; dotsEl.style.display = 'none'; passwordWrap.style.display = 'none';
+      patternWrap.style.display = 'flex';
+      gatePatternMsg.textContent = '';
+      gatePatternMsg.className = 'pattern-msg';
+      if (!gatePatternCtl) gatePatternCtl = initPatternGrid(gatePatternGrid, handleGatePatternComplete);
+      setTimeout(function () { gatePatternCtl.updateRects(); gatePatternCtl.reset(); }, 60);
+    } else if (mode === 'pin4' || mode === 'passcode') {
       keypad.style.display = ''; dotsEl.style.display = ''; passwordWrap.style.display = 'none';
+      patternWrap.style.display = 'none';
+      var reqLen = getRequiredLen();
+      for (var i = 0; i < pipEls.length; i++) pipEls[i].style.display = (i < reqLen) ? '' : 'none';
     } else {
       keypad.style.display = 'none'; dotsEl.style.display = 'none'; passwordWrap.style.display = '';
+      patternWrap.style.display = 'none';
     }
+
     entered = ''; renderDots(); passwordInput.value = '';
     setGateMsg('');
     refreshBioUI();
     if (lockTicker) { clearInterval(lockTicker); lockTicker = null; }
+  }
+
+  function handleGatePatternComplete(seq) {
+    if (verifying || isGuest) return;
+    if (seq.length < MIN_PATTERN_DOTS) {
+      gatePatternMsg.textContent = 'Connect at least ' + MIN_PATTERN_DOTS + ' dots.';
+      gatePatternMsg.className = 'pattern-msg';
+      setTimeout(function () { if (gatePatternCtl) gatePatternCtl.reset(); }, 500);
+      return;
+    }
+    var cred = seq.join('-');
+    gatePatternMsg.textContent = 'Verifying…';
+    gatePatternMsg.className = 'pattern-msg warn';
+    tryUnlock(cred);
   }
 
   function formatCountdown(ms) {
@@ -2015,9 +2156,7 @@
     return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
   }
   function showLockoutUI(untilTs) {
-    gateNormal.hidden = true;
-    gateRecovery.hidden = true;
-    gateLocked.style.display = '';
+    gateNormal.hidden = true; gateRecovery.hidden = true; gateLocked.style.display = '';
     lockIcon.classList.add('warn');
     lockTitle.textContent = 'Temporarily Locked';
     lockMsg.textContent = 'Too many incorrect attempts. Try again once the timer runs out.';
@@ -2037,9 +2176,7 @@
     lockTimer.textContent = formatCountdown(untilTs - Date.now());
   }
   function showPermanentLockUI() {
-    gateNormal.hidden = true;
-    gateRecovery.hidden = true;
-    gateLocked.style.display = '';
+    gateNormal.hidden = true; gateRecovery.hidden = true; gateLocked.style.display = '';
     lockIcon.classList.remove('warn');
     lockTitle.textContent = 'Permanently Locked';
     lockMsg.textContent = 'This device has been permanently locked after repeated incorrect attempts.';
@@ -2061,39 +2198,51 @@
     shakeDots();
     setGateMsg(remaining + (remaining === 1 ? ' try left' : ' tries left'), 'warn');
     setTimeout(function () { if (gateLocked.style.display === 'none') setGateMsg(''); }, 1800);
+    if (getMode() === 'pattern' && gatePatternMsg) {
+      gatePatternMsg.textContent = remaining + (remaining === 1 ? ' try left' : ' tries left');
+      gatePatternMsg.className = 'pattern-msg warn';
+    }
   }
   function onCorrect() { resetLockState(); unlockUI(); }
 
   async function tryUnlock(enteredValue) {
     if (verifying || isGuest) return;
     verifying = true;
-    setGateMsg('Verifying…', 'warn');
+    if (getMode() === 'pattern') { gatePatternMsg.textContent = 'Verifying…'; gatePatternMsg.className = 'pattern-msg warn'; }
+    else setGateMsg('Verifying…', 'warn');
     try {
       if (!vaultRawMemory || !vaultRawMemory.kek || !vaultRawMemory.kek.pass) throw new Error('no vault');
       var kek = await deriveKEK(enteredValue, unb64(vaultRawMemory.kek.pass.salt), vaultRawMemory.kek.pass.iterations);
       var cek = await unwrapCEK(vaultRawMemory.kek.pass.wrappedCek, kek);
       var payload = await decryptWithCEK(cek, vaultRawMemory.enc);
       if (!payload.integrity || payload.integrity.app !== 'Pura Anniversary') throw new Error('integrity');
-      vaultCEK = cek;
-      vaultPayload = payload;
+      vaultCEK = cek; vaultPayload = payload;
       currentMode = payload.mode || 'passcode';
       vaultLockedSoft = false;
       verifying = false;
       onCorrect();
     } catch (e) {
       verifying = false; entered = ''; renderDots();
-      setGateMsg(''); onWrongAttempt();
+      setGateMsg('');
+      if (getMode() === 'pattern' && gatePatternMsg) {
+        gatePatternMsg.textContent = '';
+        gatePatternMsg.className = 'pattern-msg';
+      }
+      onWrongAttempt();
+      if (getMode() === 'pattern' && gatePatternCtl) setTimeout(function () { gatePatternCtl.reset(); }, 300);
     }
   }
 
   keypad.addEventListener('click', function (e) {
     var btn = e.target.closest('.key');
     if (!btn || btn.classList.contains('empty') || verifying || isGuest) return;
+    if (getMode() === 'pattern') return;
     var k = btn.getAttribute('data-k');
+    var reqLen = getRequiredLen();
     if (k === 'del') { entered = entered.slice(0, -1); renderDots(); return; }
-    if (entered.length < MIN_PASSCODE_LEN) {
+    if (entered.length < reqLen) {
       entered += k; renderDots();
-      if (entered.length === MIN_PASSCODE_LEN) setTimeout(function () { tryUnlock(entered); }, 150);
+      if (entered.length === reqLen) setTimeout(function () { tryUnlock(entered); }, 150);
     }
   });
   function tryPasswordSubmit() {
@@ -2111,10 +2260,12 @@
     if (recoveryMode) return;
     var s = getLockState();
     if (s.perm || s.until > Date.now()) return;
-    if (getMode() !== 'passcode') return;
-    if (e.key >= '0' && e.key <= '9' && entered.length < MIN_PASSCODE_LEN) {
+    var m = getMode();
+    if (m !== 'passcode' && m !== 'pin4') return;
+    var reqLen = getRequiredLen();
+    if (e.key >= '0' && e.key <= '9' && entered.length < reqLen) {
       entered += e.key; renderDots();
-      if (entered.length === MIN_PASSCODE_LEN) setTimeout(function () { tryUnlock(entered); }, 150);
+      if (entered.length === reqLen) setTimeout(function () { tryUnlock(entered); }, 150);
     } else if (e.key === 'Backspace') { entered = entered.slice(0, -1); renderDots(); }
   });
 
@@ -2128,8 +2279,7 @@
       if (!cek) throw new Error('no cek');
       var payload = await decryptWithCEK(cek, vaultRawMemory.enc);
       if (!payload.integrity || payload.integrity.app !== 'Pura Anniversary') throw new Error('integrity');
-      vaultCEK = cek;
-      vaultPayload = payload;
+      vaultCEK = cek; vaultPayload = payload;
       currentMode = payload.mode || 'passcode';
       vaultLockedSoft = false;
       setGateMsg('Verified.', 'ok');
@@ -2175,20 +2325,16 @@
       var cek = await unwrapCEK(vaultRawMemory.kek.backup.wrappedCek, bKek);
       var payload = await decryptWithCEK(cek, vaultRawMemory.enc);
       if (!payload.integrity || payload.integrity.app !== 'Pura Anniversary') throw new Error('integrity');
-      vaultCEK = cek;
-      vaultPayload = payload;
+      vaultCEK = cek; vaultPayload = payload;
       currentMode = payload.mode || 'passcode';
       vaultLockedSoft = false;
       verifying = false;
       recoveryInput.value = '';
       resetLockState();
       onCorrect();
-      setGateMsg('Recovered. Change your password.', 'ok');
+      setGateMsg('Recovered. Change your credential.', 'ok');
       setTimeout(function () { setGateMsg(''); }, 4000);
-    } catch (e) {
-      verifying = false;
-      setGateMsg('Backup code is incorrect.', 'err');
-    }
+    } catch (e) { verifying = false; setGateMsg('Backup code is incorrect.', 'err'); }
   });
 
   function showWelcome() {
@@ -2203,40 +2349,25 @@
   }
 
   function enterGuestMode() {
-    isGuest = true;
-    currentMode = 'guest';
+    isGuest = true; currentMode = 'guest';
     var raw = safeGetItem(KEY_GUEST_VAULT);
     var payload = null;
-    if (raw) {
-      try { payload = JSON.parse(raw); } catch (e) { payload = null; }
-    }
+    if (raw) { try { payload = JSON.parse(raw); } catch (e) { payload = null; } }
     if (!payload || typeof payload !== 'object') {
-      payload = {
-        guest: true,
-        setupComplete: true,
-        mode: 'guest',
-        notes: {},
-        capsules: [],
-        settings: { idleMs: 300000, strictLock: false, visibilityLock: true }
-      };
+      payload = { guest: true, setupComplete: true, mode: 'guest', notes: {}, capsules: [], settings: { idleMs: 300000, strictLock: false, visibilityLock: true } };
       safeSetItem(KEY_GUEST_VAULT, JSON.stringify(payload));
     }
-    vaultRawMemory = payload;
-    vaultPayload = payload;
+    vaultRawMemory = payload; vaultPayload = payload;
     hideWelcome();
-    gate.classList.add('hidden');
-    gate.style.display = 'none';
+    gate.classList.add('hidden'); gate.style.display = 'none';
     switchView('anniversary');
     refreshAllSettingsUI();
     applyGuestGuards();
     showToast('Guest mode — data is stored locally only');
   }
-
   function exitGuestMode() {
     isGuest = false;
-    vaultRawMemory = null;
-    vaultPayload = null;
-    vaultCEK = null;
+    vaultRawMemory = null; vaultPayload = null; vaultCEK = null;
     currentMode = 'passcode';
   }
 
@@ -2271,31 +2402,22 @@
   var policyDecline = document.getElementById('policyDecline');
   var closePolicy = document.getElementById('closePolicy');
 
-  function closePolicyDialog() {
-    policyOverlay.classList.remove('open');
-    policyDontAsk.checked = false;
-  }
+  function closePolicyDialog() { policyOverlay.classList.remove('open'); policyDontAsk.checked = false; }
   closePolicy.addEventListener('click', closePolicyDialog);
   policyOverlay.addEventListener('click', function (e) { if (e.target === policyOverlay) closePolicyDialog(); });
 
   function requestPolicyThen(intent) {
-    if (safeGetItem(KEY_POLICY_OK) === '1') {
-      performGoogleSignIn(intent);
-      return;
-    }
+    if (safeGetItem(KEY_POLICY_OK) === '1') { performGoogleSignIn(intent); return; }
     pendingIntent = intent;
     policyDontAsk.checked = false;
     policyOverlay.classList.add('open');
   }
-
   policyAgree.addEventListener('click', function () {
     if (policyDontAsk.checked) safeSetItem(KEY_POLICY_OK, '1');
     closePolicyDialog();
-    var intent = pendingIntent || 'signin';
-    pendingIntent = null;
+    var intent = pendingIntent || 'signin'; pendingIntent = null;
     performGoogleSignIn(intent);
   });
-
   policyDecline.addEventListener('click', function () {
     if (policyDontAsk.checked) safeSetItem(KEY_POLICY_OK, '1');
     closePolicyDialog();
@@ -2305,9 +2427,7 @@
 
   async function performGoogleSignIn(intent) {
     if (!fbAuth) { setWelcomeMsg('Firebase failed to load.', 'err'); return; }
-    btnSignIn.disabled = true;
-    btnLogIn.disabled = true;
-    btnGuest.disabled = true;
+    btnSignIn.disabled = true; btnLogIn.disabled = true; btnGuest.disabled = true;
     signInLabel.textContent = 'Signing in…';
     setWelcomeMsg('');
     try {
@@ -2320,19 +2440,12 @@
     } catch (err) {
       console.error('Sign-in failed:', err);
       var code = err && err.code ? err.code : '';
-      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
-        setWelcomeMsg('Sign-in cancelled.', 'warn');
-      } else if (code === 'auth/popup-blocked') {
-        setWelcomeMsg('Popup blocked. Allow popups for this site and try again.', 'err');
-      } else if (code === 'auth/unauthorized-domain') {
-        setWelcomeMsg('Domain not authorized. Add safeswing.github.io in Firebase → Authentication → Settings → Authorized domains.', 'err');
-      } else {
-        setWelcomeMsg('Sign-in failed: ' + (err.message || 'unknown'), 'err');
-      }
+      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') setWelcomeMsg('Sign-in cancelled.', 'warn');
+      else if (code === 'auth/popup-blocked') setWelcomeMsg('Popup blocked. Allow popups for this site and try again.', 'err');
+      else if (code === 'auth/unauthorized-domain') setWelcomeMsg('Domain not authorized. Add safeswing.github.io in Firebase → Authentication → Settings → Authorized domains.', 'err');
+      else setWelcomeMsg('Sign-in failed: ' + (err.message || 'unknown'), 'err');
     } finally {
-      btnSignIn.disabled = false;
-      btnLogIn.disabled = false;
-      btnGuest.disabled = false;
+      btnSignIn.disabled = false; btnLogIn.disabled = false; btnGuest.disabled = false;
       signInLabel.textContent = 'Sign in with Google';
     }
   }
@@ -2341,28 +2454,17 @@
     setWelcomeMsg('Loading your vault…', 'warn');
     var raw = await loadVaultFromFirestore(fbUser.uid);
     if (!raw) {
-      if (intent === 'login') {
-        setWelcomeMsg('No account found for this Google account. Tap Sign in to create one.', 'err');
-        return;
-      }
-      vaultRawMemory = null;
-      vaultCEK = null;
-      vaultPayload = null;
+      if (intent === 'login') { setWelcomeMsg('No account found for this Google account. Tap Sign in to create one.', 'err'); return; }
+      vaultRawMemory = null; vaultCEK = null; vaultPayload = null;
       hideWelcome();
       openSetupWizard();
       return;
     }
-    if (!raw.kek || !raw.kek.pass || raw.v !== VAULT_VERSION) {
-      setWelcomeMsg('Vault uses an unsupported format.', 'err');
-      return;
-    }
-    vaultRawMemory = raw;
-    vaultCEK = null;
-    vaultPayload = null;
+    if (!raw.kek || !raw.kek.pass || raw.v !== VAULT_VERSION) { setWelcomeMsg('Vault uses an unsupported format.', 'err'); return; }
+    vaultRawMemory = raw; vaultCEK = null; vaultPayload = null;
     currentMode = 'passcode';
     hideWelcome();
-    gate.style.display = '';
-    gate.classList.remove('hidden');
+    gate.style.display = ''; gate.classList.remove('hidden');
     var ls = getLockState();
     if (ls.perm) showPermanentLockUI();
     else if (ls.until && ls.until > Date.now()) showLockoutUI(ls.until);
@@ -2405,21 +2507,38 @@
   var setupDone = document.getElementById('setupDone');
   var setupBackupMsg = document.getElementById('setupBackupMsg');
 
+  var legacyChoiceBack = document.getElementById('legacyChoiceBack');
+  var legacyEnterBack = document.getElementById('legacyEnterBack');
+  var legacyEnterTitle = document.getElementById('legacyEnterTitle');
+  var legacyEnterDesc = document.getElementById('legacyEnterDesc');
+  var legacyPatternForm = document.getElementById('legacyPatternForm');
+  var legacyPin4Form = document.getElementById('legacyPin4Form');
+  var setupPatternMsg = document.getElementById('setupPatternMsg');
+  var setupPin4 = document.getElementById('setupPin4');
+  var setupPin4Cfm = document.getElementById('setupPin4Cfm');
+  var setupPin4Submit = document.getElementById('setupPin4Submit');
+  var setupPin4Msg = document.getElementById('setupPin4Msg');
+
   var setupChosenType = null;
   var setupGeneratedBackup = null;
+  var setupLegacyType = null;
+  var setupLegacyFirstPattern = null;
+  var setupPatternCtl = null;
 
   function showSetupStep(name) {
     for (var i = 0; i < setupSteps.length; i++) setupSteps[i].hidden = setupSteps[i].getAttribute('data-step') !== name;
   }
   function openSetupWizard() {
-    setupChosenType = null;
-    setupGeneratedBackup = null;
+    setupChosenType = null; setupGeneratedBackup = null; setupLegacyType = null; setupLegacyFirstPattern = null;
     setupNew.value = ''; setupCfm.value = '';
     setupMsg.textContent = ''; setupMsg.className = 'form-msg';
     setupBackupMsg.textContent = ''; setupBackupMsg.className = 'form-msg';
     setupBackupAck.checked = false;
     setupDone.disabled = true;
     setupNewTools.style.display = 'none';
+    setupPin4.value = ''; setupPin4Cfm.value = '';
+    setupPin4Msg.textContent = ''; setupPin4Msg.className = 'form-msg';
+    setupPatternMsg.textContent = ''; setupPatternMsg.className = 'pattern-msg';
     showSetupStep('choose');
     setupOverlay.hidden = false;
     setupOverlay.classList.remove('hidden');
@@ -2429,50 +2548,129 @@
     setTimeout(function () { setupOverlay.hidden = true; }, 400);
   }
 
+  function beginLegacyPattern() {
+    setupLegacyType = 'pattern';
+    setupLegacyFirstPattern = null;
+    legacyEnterTitle.textContent = 'Draw Pattern';
+    legacyEnterDesc.textContent = 'Connect at least ' + MIN_PATTERN_DOTS + ' dots. You will draw it twice.';
+    legacyPatternForm.style.display = '';
+    legacyPin4Form.style.display = 'none';
+    setupPatternMsg.textContent = 'Draw your pattern';
+    setupPatternMsg.className = 'pattern-msg warn';
+    showSetupStep('legacy-enter');
+    setTimeout(function () {
+      if (!setupPatternCtl) setupPatternCtl = initPatternGrid(document.getElementById('setupPatternGrid'), handleSetupPatternComplete);
+      setupPatternCtl.updateRects();
+      setupPatternCtl.reset();
+    }, 80);
+  }
+  function beginLegacyPin4() {
+    setupLegacyType = 'pin4';
+    legacyEnterTitle.textContent = 'Choose 4-digit PIN';
+    legacyEnterDesc.textContent = 'Four digits. Avoid 1111, 1234, and similar.';
+    legacyPatternForm.style.display = 'none';
+    legacyPin4Form.style.display = '';
+    setupPin4.value = ''; setupPin4Cfm.value = '';
+    setupPin4Msg.textContent = ''; setupPin4Msg.className = 'form-msg';
+    showSetupStep('legacy-enter');
+    setTimeout(function () { setupPin4.focus(); }, 250);
+  }
+
+  function handleSetupPatternComplete(seq) {
+    if (seq.length < MIN_PATTERN_DOTS) {
+      setupPatternMsg.textContent = 'Connect at least ' + MIN_PATTERN_DOTS + ' dots.';
+      setupPatternMsg.className = 'pattern-msg';
+      setTimeout(function () { if (setupPatternCtl) setupPatternCtl.reset(); }, 500);
+      return;
+    }
+    var cred = seq.join('-');
+    if (setupLegacyFirstPattern === null) {
+      setupLegacyFirstPattern = cred;
+      setupPatternMsg.textContent = 'Draw again to confirm';
+      setupPatternMsg.className = 'pattern-msg warn';
+      setTimeout(function () { if (setupPatternCtl) setupPatternCtl.reset(); }, 400);
+      return;
+    }
+    if (cred !== setupLegacyFirstPattern) {
+      setupLegacyFirstPattern = null;
+      setupPatternMsg.textContent = 'Patterns do not match. Start over.';
+      setupPatternMsg.className = 'pattern-msg';
+      setTimeout(function () { if (setupPatternCtl) setupPatternCtl.reset(); }, 500);
+      return;
+    }
+    setupPatternMsg.textContent = 'Pattern confirmed.';
+    setupPatternMsg.className = 'pattern-msg ok';
+    performSetupEncryption(cred, 'pattern');
+  }
+
+  setupPin4Submit.addEventListener('click', function () {
+    var p1 = setupPin4.value;
+    var p2 = setupPin4Cfm.value;
+    if (!/^\d{4}$/.test(p1)) { setupPin4Msg.textContent = 'Enter exactly 4 digits.'; setupPin4Msg.className = 'form-msg err'; return; }
+    if (isWeakPin4(p1)) { setupPin4Msg.textContent = 'Too predictable. Try another.'; setupPin4Msg.className = 'form-msg err'; return; }
+    if (p1 !== p2) { setupPin4Msg.textContent = 'PINs do not match.'; setupPin4Msg.className = 'form-msg err'; return; }
+    setupPin4Msg.textContent = '';
+    performSetupEncryption(p1, 'pin4');
+  });
+
+  legacyChoiceBack.addEventListener('click', function () { showSetupStep('choose'); });
+  legacyEnterBack.addEventListener('click', function () { showSetupStep('legacy-choice'); });
+
   setupOverlay.addEventListener('click', function (e) {
     var opt = e.target.closest('.setup-option');
-    if (!opt) return;
-    setupChosenType = opt.getAttribute('data-type');
-    if (setupChosenType === 'passcode') {
-      setupEnterTitle.textContent = 'Choose Default Password';
-      setupEnterDesc.textContent = 'Enter 6 digits. Avoid sequences and repeated digits.';
-      setupNewLabel.textContent = 'New Passcode';
-      setupCfmLabel.textContent = 'Confirm Passcode';
-      setupNew.className = 'digits'; setupCfm.className = 'digits';
-      setupNew.setAttribute('maxlength', '6'); setupCfm.setAttribute('maxlength', '6');
-      setupNew.setAttribute('inputmode', 'numeric'); setupCfm.setAttribute('inputmode', 'numeric');
-      setupNew.placeholder = '••••••'; setupCfm.placeholder = '••••••';
-      setupGen.hidden = true;
-      setupNewTools.style.display = 'none';
-    } else if (setupChosenType === 'password') {
-      setupEnterTitle.textContent = 'Choose High Password';
-      setupEnterDesc.textContent = 'Minimum 32 characters. Generate one if you like.';
-      setupNewLabel.textContent = 'New Password';
-      setupCfmLabel.textContent = 'Confirm Password';
-      setupNew.className = ''; setupCfm.className = '';
-      setupNew.removeAttribute('maxlength'); setupCfm.removeAttribute('maxlength');
-      setupNew.removeAttribute('inputmode'); setupCfm.removeAttribute('inputmode');
-      setupNew.placeholder = 'Minimum 32 characters'; setupCfm.placeholder = 'Minimum 32 characters';
-      setupGen.hidden = false;
-      setupGen.textContent = 'Generate 32 Character Secure Password (Random)';
-      setupNewTools.style.display = 'flex';
-    } else {
-      setupEnterTitle.textContent = 'Choose Ultra Password';
-      setupEnterDesc.textContent = 'Minimum 128 characters. Maximum security tier.';
-      setupNewLabel.textContent = 'New Ultra Password';
-      setupCfmLabel.textContent = 'Confirm Ultra Password';
-      setupNew.className = ''; setupCfm.className = '';
-      setupNew.removeAttribute('maxlength'); setupCfm.removeAttribute('maxlength');
-      setupNew.removeAttribute('inputmode'); setupCfm.removeAttribute('inputmode');
-      setupNew.placeholder = 'Minimum 128 characters'; setupCfm.placeholder = 'Minimum 128 characters';
-      setupGen.hidden = false;
-      setupGen.textContent = 'Generate 128 Character Secure Password (Random)';
-      setupNewTools.style.display = 'flex';
+    if (opt) {
+      var t = opt.getAttribute('data-type');
+      if (t === 'legacy') { showSetupStep('legacy-choice'); return; }
+      setupChosenType = t;
+      if (setupChosenType === 'passcode') {
+        setupEnterTitle.textContent = 'Choose Default Password';
+        setupEnterDesc.textContent = 'Enter 6 digits. Avoid sequences and repeated digits.';
+        setupNewLabel.textContent = 'New Passcode';
+        setupCfmLabel.textContent = 'Confirm Passcode';
+        setupNew.className = 'digits'; setupCfm.className = 'digits';
+        setupNew.setAttribute('maxlength', '6'); setupCfm.setAttribute('maxlength', '6');
+        setupNew.setAttribute('inputmode', 'numeric'); setupCfm.setAttribute('inputmode', 'numeric');
+        setupNew.placeholder = '••••••'; setupCfm.placeholder = '••••••';
+        setupGen.hidden = true;
+        setupNewTools.style.display = 'none';
+      } else if (setupChosenType === 'password') {
+        setupEnterTitle.textContent = 'Choose High Password';
+        setupEnterDesc.textContent = 'Minimum 32 characters. Generate one if you like.';
+        setupNewLabel.textContent = 'New Password';
+        setupCfmLabel.textContent = 'Confirm Password';
+        setupNew.className = ''; setupCfm.className = '';
+        setupNew.removeAttribute('maxlength'); setupCfm.removeAttribute('maxlength');
+        setupNew.removeAttribute('inputmode'); setupCfm.removeAttribute('inputmode');
+        setupNew.placeholder = 'Minimum 32 characters'; setupCfm.placeholder = 'Minimum 32 characters';
+        setupGen.hidden = false;
+        setupGen.textContent = 'Generate 32 Character Secure Password (Random)';
+        setupNewTools.style.display = 'flex';
+      } else {
+        setupEnterTitle.textContent = 'Choose Ultra Password';
+        setupEnterDesc.textContent = 'Minimum 128 characters. Maximum security tier.';
+        setupNewLabel.textContent = 'New Ultra Password';
+        setupCfmLabel.textContent = 'Confirm Ultra Password';
+        setupNew.className = ''; setupCfm.className = '';
+        setupNew.removeAttribute('maxlength'); setupCfm.removeAttribute('maxlength');
+        setupNew.removeAttribute('inputmode'); setupCfm.removeAttribute('inputmode');
+        setupNew.placeholder = 'Minimum 128 characters'; setupCfm.placeholder = 'Minimum 128 characters';
+        setupGen.hidden = false;
+        setupGen.textContent = 'Generate 128 Character Secure Password (Random)';
+        setupNewTools.style.display = 'flex';
+      }
+      setupNew.value = ''; setupCfm.value = '';
+      setupMsg.textContent = ''; setupMsg.className = 'form-msg';
+      showSetupStep('enter');
+      setTimeout(function () { setupNew.focus(); }, 200);
+      return;
     }
-    setupNew.value = ''; setupCfm.value = '';
-    setupMsg.textContent = ''; setupMsg.className = 'form-msg';
-    showSetupStep('enter');
-    setTimeout(function () { setupNew.focus(); }, 200);
+    var leg = e.target.closest('[data-legacy]');
+    if (leg) {
+      var ltype = leg.getAttribute('data-legacy');
+      if (ltype === 'pattern') beginLegacyPattern();
+      else beginLegacyPin4();
+      return;
+    }
   });
 
   setupBack.addEventListener('click', function () { showSetupStep('choose'); });
@@ -2489,8 +2687,7 @@
   });
 
   setupSubmit.addEventListener('click', async function () {
-    var nw = setupNew.value;
-    var cf = setupCfm.value;
+    var nw = setupNew.value, cf = setupCfm.value;
     if (!nw || !cf) { setupMsg.textContent = 'Please fill in both fields.'; setupMsg.className = 'form-msg err'; return; }
     if (setupChosenType === 'passcode') {
       if (!/^\d{6}$/.test(nw)) { setupMsg.textContent = 'Passcode must be exactly 6 digits.'; setupMsg.className = 'form-msg err'; return; }
@@ -2501,32 +2698,31 @@
     }
     if (nw !== cf) { setupMsg.textContent = 'Values do not match.'; setupMsg.className = 'form-msg err'; return; }
     if (!fbUser) { setupMsg.textContent = 'You must be signed in.'; setupMsg.className = 'form-msg err'; return; }
-    if (!window.isSecureContext || !crypto.subtle) {
-      setupMsg.textContent = 'Web Crypto unavailable. HTTPS required.';
-      setupMsg.className = 'form-msg err';
-      return;
-    }
-
+    if (!window.isSecureContext || !crypto.subtle) { setupMsg.textContent = 'Web Crypto unavailable. HTTPS required.'; setupMsg.className = 'form-msg err'; return; }
     setupMsg.textContent = 'Setting up encryption…'; setupMsg.className = 'form-msg';
+    await performSetupEncryption(nw, setupChosenType, setupMsg);
+  });
 
+  async function performSetupEncryption(credential, mode, msgEl) {
+    msgEl = msgEl || setupMsg;
+    if (!fbUser) { msgEl.textContent = 'You must be signed in.'; msgEl.className = 'form-msg err'; return; }
+    if (!window.isSecureContext || !crypto.subtle) { msgEl.textContent = 'Web Crypto unavailable. HTTPS required.'; msgEl.className = 'form-msg err'; return; }
+    msgEl.textContent = 'Setting up encryption…'; msgEl.className = 'form-msg';
     try {
       var salt = randBytes(16);
       var iters = DEFAULT_ITERATIONS;
-      var kek = await deriveKEK(nw, salt, iters);
+      var kek = await deriveKEK(credential, salt, iters);
       var cek = await generateCEK();
       var wrapped = await wrapCEK(cek, kek);
       var backupCode = generateBackupCode();
       var bSalt = randBytes(16);
       var bKek = await deriveKEK(normalizeBackupCode(backupCode), bSalt, DEFAULT_ITERATIONS);
       var bWrapped = await wrapCEK(cek, bKek);
-
       var payload = {
         integrity: { app: 'Pura Anniversary', schema: VAULT_VERSION },
         setupComplete: true,
-        mode: setupChosenType,
-        notes: {},
-        capsules: [],
-        revert: null,
+        mode: mode,
+        notes: {}, capsules: [], revert: null,
         settings: { idleMs: 300000, strictLock: false, visibilityLock: true }
       };
       var enc = await encryptWithCEK(cek, payload);
@@ -2538,31 +2734,20 @@
         },
         enc: enc
       };
-
-      vaultRawMemory = newRaw;
-      vaultPayload = payload;
-      vaultCEK = cek;
-      currentMode = setupChosenType;
-      setupGeneratedBackup = backupCode;
+      vaultRawMemory = newRaw; vaultPayload = payload; vaultCEK = cek;
+      currentMode = mode; setupGeneratedBackup = backupCode;
       queueFirestoreWrite();
-
-      setupMsg.textContent = 'Saving to cloud…'; setupMsg.className = 'form-msg';
+      msgEl.textContent = 'Saving to cloud…'; msgEl.className = 'form-msg';
       var syncOK = await waitForCloudSync();
-      if (!syncOK) {
-        setupMsg.textContent = 'Cloud save failed. Check the banner at the top.';
-        setupMsg.className = 'form-msg err';
-        return;
-      }
-
+      if (!syncOK) { msgEl.textContent = 'Cloud save failed. Check the banner at the top.'; msgEl.className = 'form-msg err'; return; }
       setupBackupCode.textContent = backupCode;
-      setupMsg.textContent = ''; setupMsg.className = 'form-msg';
+      msgEl.textContent = ''; msgEl.className = 'form-msg';
       showSetupStep('backup');
     } catch (err) {
-      var msg = err && err.message ? err.message : String(err);
-      setupMsg.textContent = 'Setup failed: ' + msg;
-      setupMsg.className = 'form-msg err';
+      var m = err && err.message ? err.message : String(err);
+      msgEl.textContent = 'Setup failed: ' + m; msgEl.className = 'form-msg err';
     }
-  });
+  }
 
   setupCopyBackup.addEventListener('click', function () {
     if (!setupGeneratedBackup) return;
@@ -2570,9 +2755,7 @@
       navigator.clipboard.writeText(setupGeneratedBackup).then(function () {
         setupBackupMsg.textContent = 'Copied to clipboard.'; setupBackupMsg.className = 'form-msg ok';
         setTimeout(function () { setupBackupMsg.textContent = ''; setupBackupMsg.className = 'form-msg'; }, 2500);
-      }).catch(function () {
-        setupBackupMsg.textContent = 'Copy failed. Select manually.'; setupBackupMsg.className = 'form-msg err';
-      });
+      }).catch(function () { setupBackupMsg.textContent = 'Copy failed. Select manually.'; setupBackupMsg.className = 'form-msg err'; });
     } catch (e) { setupBackupMsg.textContent = 'Copy not supported.'; setupBackupMsg.className = 'form-msg err'; }
   });
 
@@ -2615,8 +2798,7 @@
     devOverlay.classList.remove('open');
     externalOverlay.classList.remove('open');
     if (strict) { vaultCEK = null; vaultPayload = null; }
-    gate.style.display = '';
-    gate.classList.remove('hidden');
+    gate.style.display = ''; gate.classList.remove('hidden');
     showNormalUI();
     setGateMsg('Session locked.', 'warn');
     setTimeout(function () { setGateMsg(''); }, 2000);
@@ -2691,10 +2873,7 @@
   var allItems = [];
   var lazyObserver = null;
 
-  function cardHasNotes(id) {
-    var notes = getNotes();
-    return notes[id] && notes[id].length > 0;
-  }
+  function cardHasNotes(id) { var notes = getNotes(); return notes[id] && notes[id].length > 0; }
   function createCard(o) {
     var card = document.createElement('article');
     card.className = 'card ' + o.stateClass;
@@ -2734,9 +2913,7 @@
     retCard.style.animationDelay = '0ms';
     return retCard;
   }
-  function teardownLazy() {
-    if (lazyObserver) { lazyObserver.disconnect(); lazyObserver = null; }
-  }
+  function teardownLazy() { if (lazyObserver) { lazyObserver.disconnect(); lazyObserver = null; } }
   function setupLazyMini() {
     teardownLazy();
     var today = new Date(); today.setHours(0, 0, 0, 0);
@@ -2745,10 +2922,7 @@
     sentinel.id = 'lazySentinel';
     listEl.appendChild(sentinel);
     function renderBatch() {
-      if (rendered >= MINI_MAX_DAYS) {
-        if (sentinel && sentinel.parentNode) sentinel.parentNode.removeChild(sentinel);
-        return;
-      }
+      if (rendered >= MINI_MAX_DAYS) { if (sentinel && sentinel.parentNode) sentinel.parentNode.removeChild(sentinel); return; }
       var end = Math.min(rendered + LAZY_BATCH, MINI_MAX_DAYS);
       var frag = document.createDocumentFragment();
       for (var i = rendered; i < end; i++) {
@@ -2770,9 +2944,7 @@
     renderBatch();
     if ('IntersectionObserver' in window && rendered < MINI_MAX_DAYS) {
       lazyObserver = new IntersectionObserver(function (entries) {
-        for (var i = 0; i < entries.length; i++) {
-          if (entries[i].isIntersecting) { renderBatch(); break; }
-        }
+        for (var i = 0; i < entries.length; i++) { if (entries[i].isIntersecting) { renderBatch(); break; } }
       }, { root: listEl, rootMargin: '400px' });
       lazyObserver.observe(sentinel);
     }
@@ -3052,10 +3224,7 @@
   settingsList.addEventListener('click', function (e) {
     var btn = e.target.closest('.settings-item');
     if (!btn) return;
-    if (isGuest && btn.getAttribute('data-requires-auth') === '1') {
-      showToast('Sign in with Google for more features');
-      return;
-    }
+    if (isGuest && btn.getAttribute('data-requires-auth') === '1') { showToast('Sign in with Google for more features'); return; }
     showSettingsView(btn.getAttribute('data-target'));
   });
   settingsOverlay.addEventListener('click', function (e) {
@@ -3064,8 +3233,8 @@
   });
 
   var SECTION_KEYWORDS = {
-    security: 'passcode password change revert credential backup code recovery',
-    encryption: 'aes aes-gcm pbkdf2 sha-256 iterations strength password ultra generate random key envelope',
+    security: 'passcode password change revert credential backup code recovery pattern pin',
+    encryption: 'aes aes-gcm pbkdf2 sha-256 iterations strength password ultra generate random key envelope pattern pin',
     lock: 'idle auto lock timeout session strict visibility tab hide',
     biometric: 'face id touch id fingerprint biometric webauthn prf',
     data: 'export import backup json vault storage diagnostics',
@@ -3091,9 +3260,7 @@
     var lsOK = false;
     try { localStorage.setItem('__t','1'); lsOK = localStorage.getItem('__t') === '1'; localStorage.removeItem('__t'); } catch(e){}
     rows.push(['Mode', isGuest ? 'Guest' : 'Signed in', true]);
-    if (!isGuest) {
-      rows.push(['User ID', fbUser ? fbUser.uid.slice(0, 12) + '…' : '—', !!fbUser]);
-    }
+    if (!isGuest) rows.push(['User ID', fbUser ? fbUser.uid.slice(0, 12) + '…' : '—', !!fbUser]);
     rows.push(['Firestore connected', fbDb ? 'Yes' : 'No', !!fbDb]);
     rows.push(['Web Crypto', crypto && crypto.subtle ? 'Yes' : 'No', !!(crypto && crypto.subtle)]);
     rows.push(['Secure context', isSecureContextOK ? 'Yes' : 'No', isSecureContextOK]);
@@ -3104,9 +3271,7 @@
     if (vaultRawMemory) {
       var size = JSON.stringify(vaultRawMemory).length;
       rows.push(['Vault size', Math.round(size / 1024) + ' KB', size > 0]);
-    } else {
-      rows.push(['Vault', 'Not loaded', false]);
-    }
+    } else rows.push(['Vault', 'Not loaded', false]);
     var html = '';
     for (var i = 0; i < rows.length; i++) {
       var cls = rows[i][2] ? 'ok' : 'err';
@@ -3125,6 +3290,7 @@
   var chgCfmLabel = document.getElementById('chgCfmLabel');
   var chgNewTools = document.getElementById('chgNewTools');
   var changeMsg = document.getElementById('changeMsg');
+  var legacyChangeMsg = document.getElementById('legacyChangeMsg');
   var revertBox = document.getElementById('revertBox');
   var revertBtn = document.getElementById('revertBtn');
   var revertTime = document.getElementById('revertTime');
@@ -3134,8 +3300,9 @@
   changeForm.addEventListener('submit', async function (e) {
     e.preventDefault();
     if (isGuest) { changeMsg.textContent = 'Sign in to change your credential.'; changeMsg.className = 'form-msg err'; return; }
-    var cur = curPass.value, nw = newPass.value, cf = cfmPass.value;
     var mode = getMode();
+    if (mode === 'pattern' || mode === 'pin4') { changeMsg.textContent = 'Switch credential type first.'; changeMsg.className = 'form-msg err'; return; }
+    var cur = curPass.value, nw = newPass.value, cf = cfmPass.value;
     if (mode === 'passcode') {
       if (!/^\d{6}$/.test(nw)) { changeMsg.textContent = 'New passcode must be exactly 6 digits.'; changeMsg.className = 'form-msg err'; return; }
       if (isWeakPasscode(nw)) { changeMsg.textContent = 'This passcode is too predictable.'; changeMsg.className = 'form-msg err'; return; }
@@ -3153,15 +3320,9 @@
       var newKek = await deriveKEK(nw, newSalt, newIters);
       var newWrapped = await wrapCEK(cek, newKek);
       vaultRawMemory.kek.pass = {
-        salt: b64(newSalt),
-        iterations: newIters,
-        wrappedCek: newWrapped,
-        prev: {
-          salt: vaultRawMemory.kek.pass.salt,
-          iterations: vaultRawMemory.kek.pass.iterations,
-          wrappedCek: vaultRawMemory.kek.pass.wrappedCek,
-          time: Date.now()
-        }
+        salt: b64(newSalt), iterations: newIters, wrappedCek: newWrapped,
+        prev: { salt: vaultRawMemory.kek.pass.salt, iterations: vaultRawMemory.kek.pass.iterations,
+          wrappedCek: vaultRawMemory.kek.pass.wrappedCek, time: Date.now() }
       };
       queueFirestoreWrite();
       vaultCEK = cek;
@@ -3169,9 +3330,7 @@
       changeMsg.textContent = 'Updated successfully.'; changeMsg.className = 'form-msg ok';
       refreshRevertBox();
       setTimeout(function () { changeMsg.textContent = ''; }, 2500);
-    } catch (err) {
-      changeMsg.textContent = 'Current credential is incorrect.'; changeMsg.className = 'form-msg err';
-    }
+    } catch (err) { changeMsg.textContent = 'Current credential is incorrect.'; changeMsg.className = 'form-msg err'; }
   });
 
   revertBtn.addEventListener('click', function () {
@@ -3255,6 +3414,10 @@
 
   function refreshModeDisplay() {
     var mode = getMode();
+    var isLegacy = (mode === 'pattern' || mode === 'pin4');
+    if (legacyChangeMsg) legacyChangeMsg.style.display = isLegacy ? '' : 'none';
+    changeForm.style.display = isLegacy ? 'none' : '';
+
     if (isGuest) {
       currentModeLabel.textContent = 'Guest mode — not encrypted';
       switchModeBtn.textContent = 'Sign in for encryption';
@@ -3274,6 +3437,18 @@
       ultraModeLabel.textContent = 'Not active';
       ultraModeHint.textContent = 'Maximum security tier. Requires a 128-character password.';
       ultraSwitchBtn.style.display = '';
+    } else if (mode === 'pattern') {
+      currentModeLabel.textContent = 'Pattern (legacy)';
+      switchModeBtn.textContent = 'Switch to Passcode Mode';
+      ultraModeLabel.textContent = 'Not active';
+      ultraModeHint.textContent = 'Maximum security tier. Requires a 128-character password.';
+      ultraSwitchBtn.style.display = '';
+    } else if (mode === 'pin4') {
+      currentModeLabel.textContent = '4-digit PIN (legacy)';
+      switchModeBtn.textContent = 'Switch to Passcode Mode';
+      ultraModeLabel.textContent = 'Not active';
+      ultraModeHint.textContent = 'Maximum security tier. Requires a 128-character password.';
+      ultraSwitchBtn.style.display = '';
     } else {
       currentModeLabel.textContent = 'Passcode (6 digits)';
       switchModeBtn.textContent = 'Switch to Password Mode';
@@ -3281,19 +3456,21 @@
       ultraModeHint.textContent = 'Maximum security tier. Requires a 128-character password.';
       ultraSwitchBtn.style.display = '';
     }
-    chgCurLabel.textContent = mode === 'passcode' ? 'Current Passcode' : 'Current Credential';
-    chgNewLabel.textContent = mode === 'ultra' ? 'New Ultra Password' : (mode === 'password' ? 'New Password' : 'New Passcode');
-    chgCfmLabel.textContent = mode === 'ultra' ? 'Confirm New Ultra Password' : (mode === 'password' ? 'Confirm New Password' : 'Confirm New Passcode');
-    if (mode === 'passcode') {
-      curPass.classList.add('digits'); curPass.setAttribute('maxlength','6'); curPass.setAttribute('inputmode','numeric'); curPass.placeholder = '••••••';
-      newPass.classList.add('digits'); newPass.setAttribute('maxlength','6'); newPass.setAttribute('inputmode','numeric'); newPass.placeholder = '••••••';
-      cfmPass.classList.add('digits'); cfmPass.setAttribute('maxlength','6'); cfmPass.setAttribute('inputmode','numeric'); cfmPass.placeholder = '••••••';
-      chgNewTools.style.display = 'none';
-    } else {
-      curPass.classList.remove('digits'); curPass.removeAttribute('maxlength'); curPass.removeAttribute('inputmode'); curPass.placeholder = 'Current credential';
-      newPass.classList.remove('digits'); newPass.removeAttribute('maxlength'); newPass.removeAttribute('inputmode'); newPass.placeholder = mode === 'ultra' ? 'Minimum 128 characters' : 'Minimum 32 characters';
-      cfmPass.classList.remove('digits'); cfmPass.removeAttribute('maxlength'); cfmPass.removeAttribute('inputmode'); cfmPass.placeholder = mode === 'ultra' ? 'Minimum 128 characters' : 'Minimum 32 characters';
-      chgNewTools.style.display = 'flex';
+    if (!isLegacy) {
+      chgCurLabel.textContent = mode === 'passcode' ? 'Current Passcode' : 'Current Credential';
+      chgNewLabel.textContent = mode === 'ultra' ? 'New Ultra Password' : (mode === 'password' ? 'New Password' : 'New Passcode');
+      chgCfmLabel.textContent = mode === 'ultra' ? 'Confirm New Ultra Password' : (mode === 'password' ? 'Confirm New Password' : 'Confirm New Passcode');
+      if (mode === 'passcode') {
+        curPass.classList.add('digits'); curPass.setAttribute('maxlength','6'); curPass.setAttribute('inputmode','numeric'); curPass.placeholder = '••••••';
+        newPass.classList.add('digits'); newPass.setAttribute('maxlength','6'); newPass.setAttribute('inputmode','numeric'); newPass.placeholder = '••••••';
+        cfmPass.classList.add('digits'); cfmPass.setAttribute('maxlength','6'); cfmPass.setAttribute('inputmode','numeric'); cfmPass.placeholder = '••••••';
+        chgNewTools.style.display = 'none';
+      } else {
+        curPass.classList.remove('digits'); curPass.removeAttribute('maxlength'); curPass.removeAttribute('inputmode'); curPass.placeholder = 'Current credential';
+        newPass.classList.remove('digits'); newPass.removeAttribute('maxlength'); newPass.removeAttribute('inputmode'); newPass.placeholder = mode === 'ultra' ? 'Minimum 128 characters' : 'Minimum 32 characters';
+        cfmPass.classList.remove('digits'); cfmPass.removeAttribute('maxlength'); cfmPass.removeAttribute('inputmode'); cfmPass.placeholder = mode === 'ultra' ? 'Minimum 128 characters' : 'Minimum 32 characters';
+        chgNewTools.style.display = 'flex';
+      }
     }
     if (vaultRawMemory && vaultRawMemory.kek && vaultRawMemory.kek.pass) {
       iterSelect.value = String(vaultRawMemory.kek.pass.iterations);
@@ -3317,7 +3494,9 @@
     if (isGuest) return;
     var newIter = parseInt(iterSelect.value, 10);
     var cur = iterCur.value;
+    var mode = getMode();
     if (!cur) { iterMsg.textContent = 'Enter your current credential.'; iterMsg.className = 'form-msg err'; return; }
+    if (mode === 'pattern') { iterMsg.textContent = 'Switch to a password or passcode to change this.'; iterMsg.className = 'form-msg err'; return; }
     if (!newIter || !vaultRawMemory) return;
     if (newIter === vaultRawMemory.kek.pass.iterations) { iterMsg.textContent = 'No change.'; iterMsg.className = 'form-msg warn'; return; }
     iterMsg.textContent = 'Applying…'; iterMsg.className = 'form-msg';
@@ -3337,23 +3516,22 @@
       iterMsg.textContent = 'Iterations updated to ' + newIter.toLocaleString() + '.';
       iterMsg.className = 'form-msg ok';
       setTimeout(function () { iterMsg.textContent = ''; }, 2500);
-    } catch (err) {
-      iterMsg.textContent = 'Current credential is incorrect.'; iterMsg.className = 'form-msg err';
-    }
+    } catch (err) { iterMsg.textContent = 'Current credential is incorrect.'; iterMsg.className = 'form-msg err'; }
   });
 
   switchModeBtn.addEventListener('click', function () {
     if (isGuest) { showToast('Sign in with Google for more features'); return; }
-    var goingToPassword = getMode() !== 'password';
-    if (getMode() === 'ultra') goingToPassword = false;
-    switchCurLabel.textContent = isPasswordMode() ? 'Current Credential' : 'Current Passcode';
+    var mode = getMode();
+    var goingToPassword = (mode !== 'password');
+    if (mode === 'ultra') goingToPassword = false;
+    switchCurLabel.textContent = (mode === 'passcode') ? 'Current Passcode' : 'Current Credential';
     switchNewLabel.textContent = goingToPassword ? 'New Password' : 'New Passcode';
     switchCfmLabel.textContent = goingToPassword ? 'Confirm New Password' : 'Confirm New Passcode';
     switchCur.value = ''; switchNew.value = ''; switchCfm.value = '';
     switchMsg.textContent = ''; switchMsg.className = 'form-msg';
     if (goingToPassword) {
       switchCur.classList.remove('digits'); switchCur.removeAttribute('maxlength'); switchCur.removeAttribute('inputmode');
-      switchCur.placeholder = isPasswordMode() ? 'Current credential' : 'Current passcode';
+      switchCur.placeholder = (mode === 'passcode') ? 'Current passcode' : 'Current credential';
       switchNew.classList.remove('digits'); switchNew.removeAttribute('maxlength'); switchNew.removeAttribute('inputmode');
       switchNew.placeholder = 'Minimum ' + MIN_PASSWORD_LEN + ' characters';
       switchCfm.classList.remove('digits'); switchCfm.removeAttribute('maxlength'); switchCfm.removeAttribute('inputmode');
@@ -3380,7 +3558,8 @@
   switchSubmitBtn.addEventListener('click', async function () {
     if (isGuest) return;
     var cur = switchCur.value, nw = switchNew.value, cf = switchCfm.value;
-    var goingToPassword = getMode() !== 'password';
+    var mode = getMode();
+    var goingToPassword = (mode !== 'password');
     if (goingToPassword) {
       if (nw.length < MIN_PASSWORD_LEN) { switchMsg.textContent = 'Password must be at least ' + MIN_PASSWORD_LEN + ' characters.'; switchMsg.className = 'form-msg err'; return; }
       if (nw !== cf) { switchMsg.textContent = 'Passwords do not match.'; switchMsg.className = 'form-msg err'; return; }
@@ -3411,11 +3590,11 @@
   });
   ultraSwitchBtn.addEventListener('click', function () {
     if (isGuest) { showToast('Sign in with Google for more features'); return; }
-    ultraCurLabel.textContent = isPasswordMode() ? 'Current Credential' : 'Current Passcode';
+    ultraCurLabel.textContent = (getMode() === 'passcode') ? 'Current Passcode' : 'Current Credential';
     ultraCur.value = ''; ultraNew.value = ''; ultraCfm.value = '';
     ultraMsg.textContent = ''; ultraMsg.className = 'form-msg';
-    if (isPasswordMode()) { ultraCur.classList.remove('digits'); ultraCur.removeAttribute('maxlength'); ultraCur.removeAttribute('inputmode'); ultraCur.placeholder = 'Current credential'; }
-    else { ultraCur.classList.add('digits'); ultraCur.setAttribute('maxlength', '6'); ultraCur.setAttribute('inputmode', 'numeric'); ultraCur.placeholder = '••••••'; }
+    if (getMode() === 'passcode') { ultraCur.classList.add('digits'); ultraCur.setAttribute('maxlength', '6'); ultraCur.setAttribute('inputmode', 'numeric'); ultraCur.placeholder = '••••••'; }
+    else { ultraCur.classList.remove('digits'); ultraCur.removeAttribute('maxlength'); ultraCur.removeAttribute('inputmode'); ultraCur.placeholder = 'Current credential'; }
     ultraForm.style.display = '';
     ultraCur.focus();
   });
@@ -3478,53 +3657,21 @@
     var configured = hasBioCred();
     var cred = getBioCred();
     var prfMode = cred && cred.mode === 'prf';
-    if (isGuest) {
-      bioStatusLabel.textContent = 'Guest';
-      bioSettingsHint.textContent = 'Biometric unlock requires a Google account.';
-      bioSettingsHint.classList.add('warn');
-      bioSetupBtn.disabled = true;
-      bioSetupBtn.textContent = 'Sign in required';
-      bioRemoveBtn.style.display = 'none';
-      bioSettingsTestBadge.style.display = 'none';
-      return;
-    }
-    if (isTestMode()) {
-      bioStatusLabel.textContent = 'Test Mode';
-      bioSettingsHint.textContent = 'Biometric is disabled while simulating a device.';
-      bioSettingsHint.classList.add('warn');
-      bioSetupBtn.disabled = true;
-      bioSetupBtn.textContent = 'Disabled';
-      bioRemoveBtn.disabled = true;
-      if (configured) bioRemoveBtn.style.display = '';
-      bioSettingsTestBadge.style.display = '';
-      return;
-    }
+    if (isGuest) { bioStatusLabel.textContent = 'Guest'; bioSettingsHint.textContent = 'Biometric unlock requires a Google account.'; bioSettingsHint.classList.add('warn'); bioSetupBtn.disabled = true; bioSetupBtn.textContent = 'Sign in required'; bioRemoveBtn.style.display = 'none'; bioSettingsTestBadge.style.display = 'none'; return; }
+    if (isTestMode()) { bioStatusLabel.textContent = 'Test Mode'; bioSettingsHint.textContent = 'Biometric is disabled while simulating a device.'; bioSettingsHint.classList.add('warn'); bioSetupBtn.disabled = true; bioSetupBtn.textContent = 'Disabled'; bioRemoveBtn.disabled = true; if (configured) bioRemoveBtn.style.display = ''; bioSettingsTestBadge.style.display = ''; return; }
     bioSettingsTestBadge.style.display = 'none';
-    if (block.blocked) {
-      bioStatusLabel.textContent = block.reason;
-      bioSettingsHint.textContent = block.detail;
-      bioSettingsHint.classList.add('warn');
-      bioSetupBtn.disabled = true;
-      bioSetupBtn.textContent = 'Unavailable';
-      bioRemoveBtn.style.display = configured ? '' : 'none';
-      return;
-    }
+    if (block.blocked) { bioStatusLabel.textContent = block.reason; bioSettingsHint.textContent = block.detail; bioSettingsHint.classList.add('warn'); bioSetupBtn.disabled = true; bioSetupBtn.textContent = 'Unavailable'; bioRemoveBtn.style.display = configured ? '' : 'none'; return; }
     bioSettingsHint.classList.remove('warn');
     bioSetupBtn.disabled = false;
     bioRemoveBtn.disabled = false;
     if (configured) {
       bioStatusLabel.textContent = prfMode ? 'Enabled (Cryptographic)' : 'Enabled (Convenience)';
-      bioSettingsHint.textContent = prfMode
-        ? 'Your biometric wraps the content key via the PRF extension. Real cryptographic binding.'
-        : 'Convenience unlock only. This authenticator did not expose a PRF secret.';
-      bioSetupBtn.style.display = 'none';
-      bioRemoveBtn.style.display = '';
+      bioSettingsHint.textContent = prfMode ? 'Your biometric wraps the content key via the PRF extension. Real cryptographic binding.' : 'Convenience unlock only. This authenticator did not expose a PRF secret.';
+      bioSetupBtn.style.display = 'none'; bioRemoveBtn.style.display = '';
     } else {
       bioStatusLabel.textContent = 'Not set up';
       bioSettingsHint.textContent = 'Use your device\'s built-in face or fingerprint. On authenticators with PRF support, this becomes a real cryptographic unlock.';
-      bioSetupBtn.style.display = '';
-      bioSetupBtn.textContent = 'Set Up Biometric Unlock';
-      bioRemoveBtn.style.display = 'none';
+      bioSetupBtn.style.display = ''; bioSetupBtn.textContent = 'Set Up Biometric Unlock'; bioRemoveBtn.style.display = 'none';
     }
   }
   bioSetupBtn.addEventListener('click', async function () {
@@ -3577,14 +3724,12 @@
     } else { exportPrefRow.style.display = 'none'; exportPrefNone.style.display = ''; }
   }
   forgetExportPrefBtn.addEventListener('click', function () {
-    safeRemoveItem(KEY_EXPORT_PREF);
-    safeRemoveItem(KEY_EXTERNAL_OK);
-    safeRemoveItem(KEY_POLICY_OK);
+    safeRemoveItem(KEY_EXPORT_PREF); safeRemoveItem(KEY_EXTERNAL_OK); safeRemoveItem(KEY_POLICY_OK);
     refreshExportPrefUI();
     showDataMsg('Preferences cleared.', 'ok');
   });
   function buildExportPayload(includeMeta) {
-    var data = { app: 'Pura Anniversary', version: 16, exportedAt: new Date().toISOString(), notes: getNotes(), capsules: getCapsules() };
+    var data = { app: 'Pura Anniversary', version: 17, exportedAt: new Date().toISOString(), notes: getNotes(), capsules: getCapsules() };
     if (includeMeta) data.passwordMode = getMode();
     return data;
   }
@@ -3649,19 +3794,15 @@
       var ct = unb64(d.enc.ct);
       var pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv }, oldKek, ct);
       var oldPayload = JSON.parse(new TextDecoder().decode(pt));
-
       var newSalt = randBytes(16);
       var newKek = await deriveKEK(cred, newSalt, DEFAULT_ITERATIONS);
       var cek = await generateCEK();
       var wrapped = await wrapCEK(cek, newKek);
-
       var newPayload = {
         integrity: { app: 'Pura Anniversary', schema: VAULT_VERSION },
         setupComplete: true,
         mode: oldPayload.mode || oldPayload.passwordMode || 'passcode',
-        notes: oldPayload.notes || {},
-        capsules: oldPayload.capsules || [],
-        revert: null,
+        notes: oldPayload.notes || {}, capsules: oldPayload.capsules || [], revert: null,
         settings: oldPayload.settings || { idleMs: 300000, strictLock: false, visibilityLock: true }
       };
       var newEnc = await encryptWithCEK(cek, newPayload);
@@ -3676,14 +3817,10 @@
       var nBWrapped = await wrapCEK(cek, nBKek);
       newRaw.kek.backup = { salt: b64(nBSalt), iterations: DEFAULT_ITERATIONS, wrappedCek: nBWrapped };
       saveVaultRaw(newRaw);
-      setTimeout(function () {
-        window.alert('Imported. Your new backup code is:\n\n' + newBackup + '\n\nSave this — it will not be shown again.');
-      }, 300);
+      setTimeout(function () { window.alert('Imported. Your new backup code is:\n\n' + newBackup + '\n\nSave this — it will not be shown again.'); }, 300);
       importOldMsg.textContent = 'Imported. Reloading…'; importOldMsg.className = 'form-msg ok';
       setTimeout(function () { location.reload(); }, 900);
-    } catch (e) {
-      importOldMsg.textContent = 'Wrong credential or corrupted file.'; importOldMsg.className = 'form-msg err';
-    }
+    } catch (e) { importOldMsg.textContent = 'Wrong credential or corrupted file.'; importOldMsg.className = 'form-msg err'; }
   });
 
   importFile.addEventListener('change', function () {
@@ -3702,28 +3839,9 @@
           setTimeout(function () { location.reload(); }, 900);
           return;
         }
-        if (data.v === VAULT_VERSION && data.kek && data.enc) {
-          saveVaultRaw(data);
-          showDataMsg('Vault imported. Reloading…', 'ok');
-          setTimeout(function () { location.reload(); }, 900);
-          return;
-        }
-        if (data.v && data.kdf && data.enc && !data.kek) {
-          pendingLegacyData = data;
-          importOldPass.value = '';
-          importOldMsg.textContent = ''; importOldMsg.className = 'form-msg';
-          importOldOverlay.classList.add('open');
-          setTimeout(function () { importOldPass.focus(); }, 300);
-          return;
-        }
-        if (data.notes || data.capsules) {
-          if (data.notes) vaultPayload.notes = data.notes;
-          if (data.capsules) vaultPayload.capsules = data.capsules;
-          await saveVault();
-          showDataMsg('Imported. Reloading…', 'ok');
-          setTimeout(function () { location.reload(); }, 900);
-          return;
-        }
+        if (data.v === VAULT_VERSION && data.kek && data.enc) { saveVaultRaw(data); showDataMsg('Vault imported. Reloading…', 'ok'); setTimeout(function () { location.reload(); }, 900); return; }
+        if (data.v && data.kdf && data.enc && !data.kek) { pendingLegacyData = data; importOldPass.value = ''; importOldMsg.textContent = ''; importOldMsg.className = 'form-msg'; importOldOverlay.classList.add('open'); setTimeout(function () { importOldPass.focus(); }, 300); return; }
+        if (data.notes || data.capsules) { if (data.notes) vaultPayload.notes = data.notes; if (data.capsules) vaultPayload.capsules = data.capsules; await saveVault(); showDataMsg('Imported. Reloading…', 'ok'); setTimeout(function () { location.reload(); }, 900); return; }
         showDataMsg('Unrecognized file format.', 'err');
       } catch (err) { showDataMsg('Invalid file.', 'err'); }
     };
@@ -3772,8 +3890,7 @@
   }
   function detectBrowser() {
     var u = navigator.userAgent || '';
-    var t = [['Edg/','Microsoft Edge'],['OPR/','Opera'],['SamsungBrowser/','Samsung Internet'],['Firefox/','Firefox'],
-      ['CriOS/','Chrome iOS'],['FxiOS/','Firefox iOS'],['Chrome/','Chrome'],['Safari/','Safari']];
+    var t = [['Edg/','Microsoft Edge'],['OPR/','Opera'],['SamsungBrowser/','Samsung Internet'],['Firefox/','Firefox'],['CriOS/','Chrome iOS'],['FxiOS/','Firefox iOS'],['Chrome/','Chrome'],['Safari/','Safari']];
     for (var i = 0; i < t.length; i++) if (u.indexOf(t[i][0]) !== -1) return t[i][1];
     return 'Unknown';
   }
@@ -3838,10 +3955,8 @@
 
   function closeDev() { devOverlay.classList.remove('open'); magicInput.value = ''; magicMsg.textContent = ''; magicMsg.className = 'form-msg'; }
   openDevBtn.addEventListener('click', function () {
-    devLockedView.hidden = false;
-    devUnlockedView.hidden = true;
-    magicInput.value = '';
-    magicMsg.textContent = ''; magicMsg.className = 'form-msg';
+    devLockedView.hidden = false; devUnlockedView.hidden = true;
+    magicInput.value = ''; magicMsg.textContent = ''; magicMsg.className = 'form-msg';
     simDevice.value = simulatedDevice || '';
     devTestBadge.style.display = isTestMode() ? '' : 'none';
     devOverlay.classList.add('open');
@@ -3855,16 +3970,13 @@
   function submitMagic() {
     var val = magicInput.value;
     if (checkMagic(val)) {
-      magicInput.value = '';
-      magicMsg.textContent = ''; magicMsg.className = 'form-msg';
-      devLockedView.hidden = true;
-      devUnlockedView.hidden = false;
+      magicInput.value = ''; magicMsg.textContent = ''; magicMsg.className = 'form-msg';
+      devLockedView.hidden = true; devUnlockedView.hidden = false;
       simDevice.value = simulatedDevice || '';
       devTestBadge.style.display = isTestMode() ? '' : 'none';
     } else {
       magicMsg.textContent = 'Incorrect. Try again.'; magicMsg.className = 'form-msg err';
-      magicInput.value = '';
-      magicInput.focus();
+      magicInput.value = ''; magicInput.focus();
     }
   }
   magicSubmit.addEventListener('click', submitMagic);
@@ -3878,15 +3990,8 @@
     if (isTestMode()) simDevice.value = simulatedDevice;
     else simDevice.value = '';
   }
-  simDevice.addEventListener('change', function () {
-    simulatedDevice = simDevice.value || null;
-    applySimulation();
-  });
-  returnDefaultBtn.addEventListener('click', function () {
-    simulatedDevice = null;
-    simDevice.value = '';
-    applySimulation();
-  });
+  simDevice.addEventListener('change', function () { simulatedDevice = simDevice.value || null; applySimulation(); });
+  returnDefaultBtn.addEventListener('click', function () { simulatedDevice = null; simDevice.value = ''; applySimulation(); });
 
   var externalOverlay = document.getElementById('externalOverlay');
   var externalDontAsk = document.getElementById('externalDontAsk');
@@ -3894,13 +3999,8 @@
   var externalCancel = document.getElementById('externalCancel');
   var closeExternal = document.getElementById('closeExternal');
 
-  function openExternal(url) {
-    window.open(url, '_blank', 'noopener,noreferrer');
-  }
-  function closeExternalDialog() {
-    externalOverlay.classList.remove('open');
-    externalDontAsk.checked = false;
-  }
+  function openExternal(url) { window.open(url, '_blank', 'noopener,noreferrer'); }
+  function closeExternalDialog() { externalOverlay.classList.remove('open'); externalDontAsk.checked = false; }
   requestBtn.addEventListener('click', function () {
     var stored = safeGetItem(KEY_EXTERNAL_OK);
     if (stored === '1') {
@@ -3930,9 +4030,7 @@
 
   signOutBtn.addEventListener('click', async function () {
     if (!confirm('Sign out? You will need to sign in again to access your vault.')) return;
-    try {
-      if (fbAuth) await fbAuth.signOut();
-    } catch (e) {}
+    try { if (fbAuth) await fbAuth.signOut(); } catch (e) {}
   });
 
   factoryResetBtn.addEventListener('click', async function () {
@@ -3940,8 +4038,7 @@
       var okg = window.confirm('Guest mode has no cloud vault. This will only clear local guest data. Continue?');
       if (!okg) return;
       safeRemoveItem(KEY_GUEST_VAULT);
-      vaultRawMemory = null;
-      vaultPayload = null;
+      vaultRawMemory = null; vaultPayload = null;
       resetMsg.textContent = 'Guest data cleared. Reloading…'; resetMsg.className = 'form-msg ok';
       setTimeout(function () { location.reload(); }, 900);
       return;
@@ -3950,15 +4047,9 @@
     if (!ok) return;
     var ok2 = window.confirm('Last chance. Export a backup first if you want to keep anything.\n\nTap OK to erase everything.');
     if (!ok2) return;
-    try {
-      if (fbUser && fbDb) {
-        await fbDb.collection('users').doc(fbUser.uid).delete();
-      }
-    } catch (e) { console.error('Delete failed:', e); }
+    try { if (fbUser && fbDb) await fbDb.collection('users').doc(fbUser.uid).delete(); } catch (e) { console.error('Delete failed:', e); }
     [KEY_BIO_CRED, KEY_LOCK_STATE, KEY_EXPORT_PREF, KEY_EXTERNAL_OK].forEach(function (k) { safeRemoveItem(k); });
-    vaultRawMemory = null;
-    vaultCEK = null;
-    vaultPayload = null;
+    vaultRawMemory = null; vaultCEK = null; vaultPayload = null;
     resetMsg.textContent = 'Reset complete. Reloading…'; resetMsg.className = 'form-msg ok';
     setTimeout(function () { location.reload(); }, 900);
   });
@@ -4019,9 +4110,7 @@
       if (!user) {
         if (isGuest) return;
         fbUser = null;
-        vaultRawMemory = null;
-        vaultCEK = null;
-        vaultPayload = null;
+        vaultRawMemory = null; vaultCEK = null; vaultPayload = null;
         showWelcome();
         return;
       }
@@ -4039,13 +4128,10 @@
         setWelcomeMsg('Vault uses an unsupported format.', 'err');
         return;
       }
-      vaultRawMemory = raw;
-      vaultCEK = null;
-      vaultPayload = null;
+      vaultRawMemory = raw; vaultCEK = null; vaultPayload = null;
       currentMode = 'passcode';
       hideWelcome();
-      gate.style.display = '';
-      gate.classList.remove('hidden');
+      gate.style.display = ''; gate.classList.remove('hidden');
       var ls = getLockState();
       if (ls.perm) showPermanentLockUI();
       else if (ls.until && ls.until > Date.now()) showLockoutUI(ls.until);
