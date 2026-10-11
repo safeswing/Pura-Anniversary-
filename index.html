@@ -269,6 +269,14 @@
   .setup-option.tag-legacy .setup-option-title::after{ content:"LEGACY"; display:inline-block; margin-left:8px;
     padding:2px 6px; border-radius:5px; font-size:9px; letter-spacing:.14em;
     background:rgba(255,196,107,.15); color:#ffc46b; vertical-align:middle; }
+  .setup-option.tag-super{ border-color:rgba(255,80,80,.55); background:rgba(255,60,60,.1);
+    box-shadow:inset 0 1px 0 rgba(255,120,120,.18), 0 0 22px -12px rgba(255,60,60,.7); }
+  .setup-option.tag-super:hover{ background:rgba(255,60,60,.18); border-color:rgba(255,100,100,.8); }
+  .setup-option.tag-super .setup-option-title{ color:#ff6b6b; }
+  .setup-option.tag-super .setup-option-title::after{ content:"3 FACTORS"; display:inline-block; margin-left:8px;
+    padding:2px 6px; border-radius:5px; font-size:9px; letter-spacing:.14em;
+    background:rgba(255,80,80,.18); color:#ff8a8a; vertical-align:middle; }
+  .setup-option.tag-super .setup-option-desc{ color:rgba(255,200,200,.7); }
   .setup-step{ text-align:left; }
   .setup-step[hidden]{ display:none; }
   .setup-back{ display:inline-flex; align-items:center; gap:4px; margin:0 0 12px; padding:6px 10px 6px 6px;
@@ -629,6 +637,10 @@
           <input type="password" id="passwordInput" placeholder="Enter your password" autocomplete="current-password">
           <button class="btn" type="button" id="passwordSubmitBtn">Unlock</button>
         </div>
+        <div id="superWrap" style="display:none;">
+          <button class="btn" type="button" id="superBioBtn">Verify Face ID or Fingerprint</button>
+          <button class="recovery-link" id="superRestart" type="button">Start over</button>
+        </div>
         <button class="recovery-link" id="forgotLink" type="button">Forgot password?</button>
         <div class="bio-wrap" id="bioWrap" style="display:none;">
           <p class="bio-title">Other security options</p>
@@ -702,7 +714,7 @@
           </button>
           <button class="setup-option tag-legacy" data-type="legacy" type="button">
             <span class="setup-option-title">Legacy / Other</span>
-            <span class="setup-option-desc">Patterns or 4-digit PIN. Easier to enter.</span>
+            <span class="setup-option-desc">Patterns or 4-digit PIN, plus the three-factor Super Extreme Security.</span>
           </button>
         </div>
       </div>
@@ -738,7 +750,7 @@
         </button>
         <div class="setup-head" style="margin-bottom:14px;">
           <h2>Legacy / Other</h2>
-          <p>Choose a legacy credential. These are faster to enter but less secure than passwords.</p>
+          <p>Most of these are faster to enter but less secure than passwords. Super Extreme Security is the strongest option.</p>
         </div>
         <div class="setup-options">
           <button class="setup-option" data-legacy="pattern" type="button">
@@ -756,6 +768,10 @@
           <button class="setup-option" data-legacy="pin4" type="button">
             <span class="setup-option-title">4-digit PIN</span>
             <span class="setup-option-desc">Just four digits. Quick to enter.</span>
+          </button>
+          <button class="setup-option tag-super" data-legacy="super" type="button">
+            <span class="setup-option-title">Super Extreme Security</span>
+            <span class="setup-option-desc">32 character password, 128 character password and Face ID or fingerprint. All three are required to set up and to sign in.</span>
           </button>
         </div>
       </div>
@@ -791,6 +807,18 @@
           <button class="btn" id="setupPin4Submit" type="button">Continue</button>
           <p class="form-msg" id="setupPin4Msg"></p>
         </div>
+      </div>
+      <div class="setup-step" data-step="super-bio" hidden>
+        <button class="setup-back" id="superBioBack" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          Back
+        </button>
+        <div class="setup-head" style="margin-bottom:14px;">
+          <h2>Super Extreme: Step 3 of 3</h2>
+          <p>Enroll Face ID or fingerprint. It becomes the third required factor, so you will need all three every time you sign in. If you lose any one of them, only your backup code can get you back in.</p>
+        </div>
+        <button class="btn" id="superBioEnroll" type="button">Enroll Face ID or Fingerprint</button>
+        <p class="form-msg" id="superBioMsg"></p>
       </div>
       <div class="setup-step" data-step="backup" hidden>
         <div class="setup-head">
@@ -1316,7 +1344,7 @@
         <button class="close-btn" id="closeLegacyWarn" type="button" aria-label="Close">&times;</button>
       </div>
       <p class="export-sub">These types are usually worse than a passcode or password. They are shorter, easier to guess, and easier for someone to copy by watching you unlock.</p>
-      <p class="mode-hint warn">Be careful. Do not reuse the pattern or PIN from your phone or anything else, avoid simple shapes and common numbers, and keep your backup code somewhere safe. The bigger pattern grids are stronger than 3x3, and a 4-digit PIN is the weakest choice here.</p>
+      <p class="mode-hint warn">Be careful. Do not reuse the pattern or PIN from your phone or anything else, avoid simple shapes and common numbers, and keep your backup code somewhere safe. The bigger pattern grids are stronger than 3x3, and a 4-digit PIN is the weakest choice here. Super Extreme Security at the bottom is the exception: it is the strongest option and needs three factors every time.</p>
       <div class="export-actions">
         <button class="btn ghost" id="legacyWarnCancel" type="button">Go Back</button>
         <button class="btn" id="legacyWarnContinue" type="button">I Understand</button>
@@ -1891,7 +1919,8 @@
     return dur;
   }
 
-  var VALID_MODES = ['passcode', 'pin4', 'pattern', 'pattern9', 'pattern16', 'password', 'ultra'];
+  var VALID_MODES = ['passcode', 'pin4', 'pattern', 'pattern9', 'pattern16', 'password', 'ultra', 'super'];
+  function isFixedCredMode(m) { return isPatternMode(m) || m === 'pin4' || m === 'super'; }
   function modeFromHint(h) { return VALID_MODES.indexOf(h) !== -1 ? h : 'passcode'; }
   function ensureModeHint() {
     if (isGuest || !vaultRawMemory || !vaultPayload) return;
@@ -2049,6 +2078,51 @@
     }
   }
 
+  // Super Extreme Security: the biometric contributes a PRF secret to the key derivation.
+  // Nothing is stored that can open the vault with the biometric alone.
+  function superComposite(p1, p2, prfBuf) {
+    return 'SX1|' + p1.length + ':' + p1 + '|' + p2.length + ':' + p2 + '|' + b64(new Uint8Array(prfBuf));
+  }
+  async function superGetPrf(credIdBytes, prfSaltBytes) {
+    var assertion = await navigator.credentials.get({
+      publicKey: {
+        challenge: randBytes(32),
+        allowCredentials: [{ id: credIdBytes, type: 'public-key' }],
+        userVerification: 'required', timeout: 60000,
+        extensions: { prf: { eval: { first: prfSaltBytes } } }
+      }
+    });
+    var res = assertion.getClientExtensionResults ? assertion.getClientExtensionResults() : {};
+    if (!res || !res.prf || !res.prf.results || !res.prf.results.first) throw { reason: 'PRF unavailable' };
+    return res.prf.results.first;
+  }
+  async function enrollSuperBiometric() {
+    var block = getBioBlockReason();
+    if (block.blocked) throw { reason: block.reason, detail: block.detail };
+    var prfSalt = randBytes(32);
+    var cred = await navigator.credentials.create({
+      publicKey: {
+        challenge: randBytes(32),
+        rp: { name: 'Pura Anniversary', id: getRpId() },
+        user: { id: randBytes(16), name: 'pura-user', displayName: 'Pura User' },
+        pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+        authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'preferred' },
+        timeout: 60000, attestation: 'none',
+        extensions: { prf: { eval: { first: prfSalt } } }
+      }
+    });
+    var results = cred.getClientExtensionResults ? cred.getClientExtensionResults() : {};
+    if (!results || !results.prf || !results.prf.enabled) throw { reason: 'PRF unavailable' };
+    // Always read the secret back through the same path the lock screen uses.
+    var out = await superGetPrf(cred.rawId, prfSalt);
+    return { credId: b64(new Uint8Array(cred.rawId)), prfSalt: b64(prfSalt), prfOutput: out };
+  }
+  async function superBiometricSecret(sx) {
+    var block = getBioBlockReason();
+    if (block.blocked) throw { reason: block.reason, detail: block.detail };
+    return await superGetPrf(unb64(sx.credId), unb64(sx.prfSalt));
+  }
+
   var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   (function buildSnow() {
     if (reduceMotion) return;
@@ -2144,6 +2218,31 @@
   var verifying = false;
   var lockTicker = null;
   var gatePatternCtl = null;
+  var superWrap = document.getElementById('superWrap');
+  var superBioBtn = document.getElementById('superBioBtn');
+  var superRestart = document.getElementById('superRestart');
+  var superStep = 1, superP1 = '', superP2 = '';
+  function renderSuperGate() {
+    var onBio = superStep === 3;
+    passwordWrap.style.display = onBio ? 'none' : '';
+    superWrap.style.display = onBio ? '' : 'none';
+    gateTitle.textContent = 'Super Extreme Security';
+    if (superStep === 1) { setGateSub('Step 1 of 3: password, ' + MIN_PASSWORD_LEN + '+ characters'); passwordInput.placeholder = 'Password (' + MIN_PASSWORD_LEN + '+ characters)'; }
+    else if (superStep === 2) { setGateSub('Step 2 of 3: ultra password, ' + MIN_ULTRA_LEN + '+ characters'); passwordInput.placeholder = 'Ultra password (' + MIN_ULTRA_LEN + '+ characters)'; }
+    else setGateSub('Step 3 of 3: Face ID or fingerprint');
+    passwordSubmitBtn.textContent = 'Next';
+    if (!onBio) setTimeout(function () { try { passwordInput.focus(); } catch (e) {} }, 50);
+  }
+  function resetSuperGate() { superStep = 1; superP1 = ''; superP2 = ''; passwordInput.value = ''; renderSuperGate(); }
+  function superAdvance(val) {
+    if (superStep === 1) {
+      if (val.length < MIN_PASSWORD_LEN) { setGateMsg('Minimum ' + MIN_PASSWORD_LEN + ' characters.', 'warn'); return; }
+      superP1 = val; superStep = 2; setGateMsg(''); renderSuperGate();
+    } else if (superStep === 2) {
+      if (val.length < MIN_ULTRA_LEN) { setGateMsg('Minimum ' + MIN_ULTRA_LEN + ' characters.', 'warn'); return; }
+      superP2 = val; superStep = 3; setGateMsg(''); renderSuperGate();
+    }
+  }
 
   function renderDots() {
     for (var i = 0; i < pipEls.length; i++) pipEls[i].classList.toggle('filled', i < entered.length);
@@ -2171,6 +2270,7 @@
   }
 
   function refreshBioUI() {
+    if (getMode() === 'super') { bioWrap.style.display = 'none'; return; }
     var block = getBioBlockReason();
     var configured = hasBioCred();
     var cred = getBioCred();
@@ -2203,13 +2303,15 @@
     recoveryMode = false;
     if (isTestMode()) { gateTitle.textContent = 'Developer Mode'; setGateSub('Simulating: ' + simulatedDevice, 'warn'); }
     else {
-      if (mode === 'ultra') { gateTitle.textContent = 'Enter Ultra Password'; setGateSub(MIN_ULTRA_LEN + '+ characters required'); }
+      if (mode === 'super') { gateTitle.textContent = 'Super Extreme Security'; setGateSub('Three factors required'); }
+      else if (mode === 'ultra') { gateTitle.textContent = 'Enter Ultra Password'; setGateSub(MIN_ULTRA_LEN + '+ characters required'); }
       else if (mode === 'password') { gateTitle.textContent = 'Enter Password'; setGateSub(MIN_PASSWORD_LEN + '+ characters required'); }
       else if (mode === 'pin4') { gateTitle.textContent = 'Enter PIN'; setGateSub('4 digits required'); }
       else if (isPatternMode(mode)) { gateTitle.textContent = 'Draw Pattern'; setGateSub('Connect at least ' + PATTERN_MODES[mode].min + ' dots'); }
       else { gateTitle.textContent = 'Enter Passcode'; setGateSub('6 digits required'); }
     }
 
+    superWrap.style.display = 'none'; passwordSubmitBtn.textContent = 'Unlock'; passwordInput.placeholder = 'Enter your password';
     if (isPatternMode(mode)) {
       keypad.style.display = 'none'; dotsEl.style.display = 'none'; passwordWrap.style.display = 'none';
       patternWrap.style.display = 'flex';
@@ -2224,6 +2326,9 @@
       patternWrap.style.display = 'none';
       var reqLen = getRequiredLen();
       for (var i = 0; i < pipEls.length; i++) pipEls[i].style.display = (i < reqLen) ? '' : 'none';
+    } else if (mode === 'super') {
+      keypad.style.display = 'none'; dotsEl.style.display = 'none'; patternWrap.style.display = 'none';
+      resetSuperGate();
     } else {
       keypad.style.display = 'none'; dotsEl.style.display = 'none'; passwordWrap.style.display = '';
       patternWrap.style.display = 'none';
@@ -2332,6 +2437,7 @@
         gatePatternMsg.className = 'pattern-msg';
       }
       onWrongAttempt();
+      if (getMode() === 'super') resetSuperGate();
       if (isPatternMode(getMode()) && gatePatternCtl) setTimeout(function () { gatePatternCtl.reset(); }, 300);
     }
   }
@@ -2353,8 +2459,29 @@
     var val = passwordInput.value;
     if (!val) return;
     passwordInput.value = '';
+    if (getMode() === 'super') { superAdvance(val); return; }
     tryUnlock(val);
   }
+  superRestart.addEventListener('click', function () { resetSuperGate(); setGateMsg(''); });
+  superBioBtn.addEventListener('click', async function () {
+    if (verifying || isGuest || getMode() !== 'super') return;
+    var sx = vaultRawMemory && vaultRawMemory.sx;
+    if (!sx || !sx.credId || !sx.prfSalt) { setGateMsg('Biometric data is missing. Use your backup code.', 'err'); return; }
+    setGateMsg('Waiting for device…', 'warn');
+    var prf;
+    try { prf = await superBiometricSecret(sx); }
+    catch (err) {
+      var nm = err && err.name ? err.name : '';
+      if (nm === 'NotAllowedError' || nm === 'AbortError') setGateMsg('Biometric cancelled.', 'warn');
+      else if (err && err.reason === 'PRF unavailable') setGateMsg('This device or browser cannot provide the biometric secret.', 'warn');
+      else if (err && err.detail) setGateMsg(err.reason + ': ' + err.detail, 'warn');
+      else setGateMsg('Biometric verification failed.', 'warn');
+      return;
+    }
+    var composite = superComposite(superP1, superP2, prf);
+    superP1 = ''; superP2 = '';
+    tryUnlock(composite);
+  });
   passwordSubmitBtn.addEventListener('click', tryPasswordSubmit);
   passwordInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') tryPasswordSubmit(); });
 
@@ -2373,6 +2500,7 @@
   });
 
   async function tryBiometric() {
+    if (getMode() === 'super') return;
     if (isGuest) { setGateMsg('Biometric requires a Google account.', 'warn'); return; }
     var block = getBioBlockReason();
     if (block.blocked) { setGateMsg(block.reason, 'warn'); return; }
@@ -2630,6 +2758,34 @@
   var setupLegacyFirstPattern = null;
   var setupPatternCtl = null;
   var setupPatternBusy = false;
+  var setupSuperP1 = '', setupSuperP2 = '', setupSuperMeta = null, setupSuperBusy = false;
+  var superBioMsg = document.getElementById('superBioMsg');
+  function configureSuperStep(n) {
+    var is1 = n === 1;
+    setupEnterTitle.textContent = 'Super Extreme: Step ' + n + ' of 3';
+    setupEnterDesc.textContent = is1
+      ? 'Choose a password with at least ' + MIN_PASSWORD_LEN + ' characters. Save it somewhere safe.'
+      : 'Now choose a second, different password with at least ' + MIN_ULTRA_LEN + ' characters. Save it too.';
+    setupNewLabel.textContent = is1 ? 'New Password' : 'New Ultra Password';
+    setupCfmLabel.textContent = is1 ? 'Confirm Password' : 'Confirm Ultra Password';
+    setupNew.className = ''; setupCfm.className = '';
+    setupNew.removeAttribute('maxlength'); setupCfm.removeAttribute('maxlength');
+    setupNew.removeAttribute('inputmode'); setupCfm.removeAttribute('inputmode');
+    var ph = 'Minimum ' + (is1 ? MIN_PASSWORD_LEN : MIN_ULTRA_LEN) + ' characters';
+    setupNew.placeholder = ph; setupCfm.placeholder = ph;
+    setupNew.type = 'password'; setupCfm.type = 'password';
+    setupGen.hidden = false;
+    setupGen.textContent = 'Generate ' + (is1 ? MIN_PASSWORD_LEN : MIN_ULTRA_LEN) + ' Character Secure Password (Random)';
+    setupNewTools.style.display = 'flex';
+    setupNew.value = ''; setupCfm.value = '';
+    setupMsg.textContent = ''; setupMsg.className = 'form-msg';
+  }
+  function beginSuperSetup() {
+    setupChosenType = 'super1'; setupSuperP1 = ''; setupSuperP2 = ''; setupSuperMeta = null;
+    configureSuperStep(1);
+    showSetupStep('enter');
+    setTimeout(function () { setupNew.focus(); }, 200);
+  }
   var legacyWarnOverlay = document.getElementById('legacyWarnOverlay');
   function openLegacyWarn() { legacyWarnOverlay.classList.add('open'); }
   function closeLegacyWarn() { legacyWarnOverlay.classList.remove('open'); }
@@ -2643,6 +2799,7 @@
   }
   function openSetupWizard() {
     setupChosenType = null; setupGeneratedBackup = null; setupLegacyType = null; setupLegacyFirstPattern = null;
+    setupSuperP1 = ''; setupSuperP2 = ''; setupSuperMeta = null;
     setupNew.value = ''; setupCfm.value = '';
     setupMsg.textContent = ''; setupMsg.className = 'form-msg';
     setupBackupMsg.textContent = ''; setupBackupMsg.className = 'form-msg';
@@ -2744,6 +2901,7 @@
       var ltype = leg.getAttribute('data-legacy');
       if (isPatternMode(ltype)) beginLegacyPattern(ltype);
       else if (ltype === 'pin4') beginLegacyPin4();
+      else if (ltype === 'super') beginSuperSetup();
       return;
     }
 
@@ -2795,13 +2953,19 @@
     setTimeout(function () { setupNew.focus(); }, 200);
   });
 
-  setupBack.addEventListener('click', function () { showSetupStep('choose'); });
+  setupBack.addEventListener('click', function () {
+    if (setupChosenType === 'super1' || setupChosenType === 'super2') { setupSuperP1 = ''; setupSuperP2 = ''; showSetupStep('legacy-choice'); return; }
+    showSetupStep('choose');
+  });
+  document.getElementById('superBioBack').addEventListener('click', function () {
+    setupChosenType = 'super2'; configureSuperStep(2); showSetupStep('enter');
+  });
   setupGen.addEventListener('click', function () {
-    if (setupChosenType === 'password') {
+    if (setupChosenType === 'password' || setupChosenType === 'super1') {
       var pw = generateRandomPassword(MIN_PASSWORD_LEN);
       setupNew.value = pw; setupCfm.value = pw;
       setupMsg.textContent = 'Generated. Save it somewhere safe.'; setupMsg.className = 'form-msg ok';
-    } else if (setupChosenType === 'ultra') {
+    } else if (setupChosenType === 'ultra' || setupChosenType === 'super2') {
       var upw = generateRandomPassword(MIN_ULTRA_LEN);
       setupNew.value = upw; setupCfm.value = upw;
       setupMsg.textContent = 'Generated. Save it somewhere safe.'; setupMsg.className = 'form-msg ok';
@@ -2815,12 +2979,24 @@
       if (!/^\d{6}$/.test(nw)) { setupMsg.textContent = 'Passcode must be exactly 6 digits.'; setupMsg.className = 'form-msg err'; return; }
       if (isWeakPasscode(nw)) { setupMsg.textContent = 'This passcode is too predictable. Choose another.'; setupMsg.className = 'form-msg err'; return; }
     } else {
-      var minLen = setupChosenType === 'ultra' ? MIN_ULTRA_LEN : MIN_PASSWORD_LEN;
+      var minLen = (setupChosenType === 'ultra' || setupChosenType === 'super2') ? MIN_ULTRA_LEN : MIN_PASSWORD_LEN;
       if (nw.length < minLen) { setupMsg.textContent = 'Minimum ' + minLen + ' characters required.'; setupMsg.className = 'form-msg err'; return; }
     }
     if (nw !== cf) { setupMsg.textContent = 'Values do not match.'; setupMsg.className = 'form-msg err'; return; }
     if (!fbUser) { setupMsg.textContent = 'You must be signed in.'; setupMsg.className = 'form-msg err'; return; }
     if (!window.isSecureContext || !crypto.subtle) { setupMsg.textContent = 'Web Crypto unavailable. HTTPS required.'; setupMsg.className = 'form-msg err'; return; }
+    if (setupChosenType === 'super1') {
+      setupSuperP1 = nw; setupChosenType = 'super2'; configureSuperStep(2);
+      setTimeout(function () { setupNew.focus(); }, 100);
+      return;
+    }
+    if (setupChosenType === 'super2') {
+      if (nw === setupSuperP1) { setupMsg.textContent = 'Use a different password for this step.'; setupMsg.className = 'form-msg err'; return; }
+      setupSuperP2 = nw; setupNew.value = ''; setupCfm.value = '';
+      superBioMsg.textContent = ''; superBioMsg.className = 'form-msg';
+      showSetupStep('super-bio');
+      return;
+    }
     setupMsg.textContent = 'Setting up encryption…'; setupMsg.className = 'form-msg';
     await performSetupEncryption(nw, setupChosenType, setupMsg);
   });
@@ -2857,6 +3033,11 @@
         },
         enc: enc
       };
+      if (mode === 'super') {
+        if (!setupSuperMeta) throw new Error('Biometric enrollment is missing');
+        newRaw.sx = { credId: setupSuperMeta.credId, prfSalt: setupSuperMeta.prfSalt };
+        clearBioCred();
+      }
       vaultRawMemory = newRaw; vaultPayload = payload; vaultCEK = cek;
       currentMode = mode; setupGeneratedBackup = backupCode;
       queueFirestoreWrite();
@@ -2884,7 +3065,27 @@
 
   setupBackupAck.addEventListener('change', function () { setupDone.disabled = !setupBackupAck.checked; });
 
+  document.getElementById('superBioEnroll').addEventListener('click', async function () {
+    if (setupSuperBusy) return;
+    if (!setupSuperP1 || !setupSuperP2) { superBioMsg.textContent = 'Go back and enter both passwords first.'; superBioMsg.className = 'form-msg err'; return; }
+    setupSuperBusy = true;
+    superBioMsg.textContent = 'Waiting for device…'; superBioMsg.className = 'form-msg';
+    try {
+      var r = await enrollSuperBiometric();
+      setupSuperMeta = { credId: r.credId, prfSalt: r.prfSalt };
+      await performSetupEncryption(superComposite(setupSuperP1, setupSuperP2, r.prfOutput), 'super', superBioMsg);
+    } catch (err) {
+      var nm = err && err.name ? err.name : '';
+      if (nm === 'NotAllowedError' || nm === 'AbortError') superBioMsg.textContent = 'Setup cancelled.';
+      else if (err && err.reason === 'PRF unavailable') superBioMsg.textContent = 'This device or browser cannot provide the biometric secret that Super Extreme Security needs. Try another browser or device.';
+      else if (err && err.detail) superBioMsg.textContent = err.detail;
+      else superBioMsg.textContent = 'Could not enroll biometric.';
+      superBioMsg.className = 'form-msg err';
+    } finally { setupSuperBusy = false; }
+  });
+
   setupDone.addEventListener('click', function () {
+    setupSuperP1 = ''; setupSuperP2 = ''; setupSuperMeta = null;
     closeSetupWizard();
     resetLockState();
     vaultLockedSoft = false;
@@ -2911,7 +3112,7 @@
   function triggerLock() {
     idleTimer = null;
     if (isGuest) return;
-    var strict = getSettings().strictLock;
+    var strict = getSettings().strictLock || getMode() === 'super';
     vaultLockedSoft = !strict;
     settingsOverlay.classList.remove('open');
     menuOverlay.classList.remove('open');
@@ -3424,7 +3625,7 @@
     e.preventDefault();
     if (isGuest) { changeMsg.textContent = 'Sign in to change your credential.'; changeMsg.className = 'form-msg err'; return; }
     var mode = getMode();
-    if (isPatternMode(mode) || mode === 'pin4') { changeMsg.textContent = 'Switch credential type first.'; changeMsg.className = 'form-msg err'; return; }
+    if (isFixedCredMode(mode)) { changeMsg.textContent = (mode === 'super') ? 'Not available in Super Extreme Security.' : 'Switch credential type first.'; changeMsg.className = 'form-msg err'; return; }
     var cur = curPass.value, nw = newPass.value, cf = cfmPass.value;
     if (mode === 'passcode') {
       if (!/^\d{6}$/.test(nw)) { changeMsg.textContent = 'New passcode must be exactly 6 digits.'; changeMsg.className = 'form-msg err'; return; }
@@ -3535,10 +3736,21 @@
   var ultraCancelBtn = document.getElementById('ultraCancelBtn');
   var ultraMsg = document.getElementById('ultraMsg');
 
+  var legacyMsgDefault = null;
   function refreshModeDisplay() {
     var mode = getMode();
-    var isLegacy = (isPatternMode(mode) || mode === 'pin4');
-    if (legacyChangeMsg) legacyChangeMsg.style.display = isLegacy ? '' : 'none';
+    var isLegacy = isFixedCredMode(mode);
+    if (legacyChangeMsg) {
+      legacyChangeMsg.style.display = isLegacy ? '' : 'none';
+      var lcp = legacyChangeMsg.querySelector('p');
+      if (lcp) {
+        if (legacyMsgDefault === null) legacyMsgDefault = lcp.textContent;
+        lcp.textContent = mode === 'super'
+          ? 'Super Extreme Security uses three factors and cannot be changed here. To change it, export your data, then use Factory Reset and set up again.'
+          : legacyMsgDefault;
+      }
+    }
+    switchModeBtn.style.display = mode === 'super' ? 'none' : '';
     changeForm.style.display = isLegacy ? 'none' : '';
 
     if (isGuest) {
@@ -3548,7 +3760,12 @@
       ultraSwitchBtn.style.display = 'none';
       return;
     }
-    if (mode === 'ultra') {
+    if (mode === 'super') {
+      currentModeLabel.textContent = 'Super Extreme Security (3 factors)';
+      ultraModeLabel.textContent = 'Not available';
+      ultraModeHint.textContent = 'Super Extreme Security is active.';
+      ultraSwitchBtn.style.display = 'none';
+    } else if (mode === 'ultra') {
       currentModeLabel.textContent = 'Ultra Password (128+ chars)';
       switchModeBtn.textContent = 'Switch to Passcode Mode';
       ultraModeLabel.textContent = 'Active';
@@ -3619,7 +3836,7 @@
     var cur = iterCur.value;
     var mode = getMode();
     if (!cur) { iterMsg.textContent = 'Enter your current credential.'; iterMsg.className = 'form-msg err'; return; }
-    if (isPatternMode(mode)) { iterMsg.textContent = 'Switch to a password or passcode to change this.'; iterMsg.className = 'form-msg err'; return; }
+    if (isPatternMode(mode) || mode === 'super') { iterMsg.textContent = (mode === 'super') ? 'Not available in Super Extreme Security.' : 'Switch to a password or passcode to change this.'; iterMsg.className = 'form-msg err'; return; }
     if (!newIter || !vaultRawMemory) return;
     if (newIter === vaultRawMemory.kek.pass.iterations) { iterMsg.textContent = 'No change.'; iterMsg.className = 'form-msg warn'; return; }
     iterMsg.textContent = 'Applying…'; iterMsg.className = 'form-msg';
@@ -3678,7 +3895,7 @@
     setTimeout(function () { if (switchMsg.textContent.indexOf('Generated') === 0) { switchMsg.textContent = ''; switchMsg.className = 'form-msg'; } }, 4000);
   });
   switchSubmitBtn.addEventListener('click', async function () {
-    if (isGuest) return;
+    if (isGuest || getMode() === 'super') return;
     var cur = switchCur.value, nw = switchNew.value, cf = switchCfm.value;
     var mode = getMode();
     var goingToPassword = (mode === 'passcode');
@@ -3729,7 +3946,7 @@
     setTimeout(function () { if (ultraMsg.textContent.indexOf('Generated') === 0) { ultraMsg.textContent = ''; ultraMsg.className = 'form-msg'; } }, 4000);
   });
   ultraSubmitBtn.addEventListener('click', async function () {
-    if (isGuest) return;
+    if (isGuest || getMode() === 'super') return;
     var cur = ultraCur.value, nw = ultraNew.value, cf = ultraCfm.value;
     if (nw.length < MIN_ULTRA_LEN) { ultraMsg.textContent = 'Ultra password must be at least ' + MIN_ULTRA_LEN + ' characters.'; ultraMsg.className = 'form-msg err'; return; }
     if (nw !== cf) { ultraMsg.textContent = 'Passwords do not match.'; ultraMsg.className = 'form-msg err'; return; }
@@ -3779,6 +3996,14 @@
     var configured = hasBioCred();
     var cred = getBioCred();
     var prfMode = cred && cred.mode === 'prf';
+    if (getMode() === 'super' && !isGuest) {
+      bioStatusLabel.textContent = 'Required (Super Extreme Security)';
+      bioSettingsHint.textContent = 'Your biometric is one of the three required factors and cannot be changed here.';
+      bioSettingsHint.classList.remove('warn');
+      bioSetupBtn.style.display = 'none'; bioRemoveBtn.style.display = 'none';
+      bioSettingsTestBadge.style.display = 'none';
+      return;
+    }
     if (isGuest) { bioStatusLabel.textContent = 'Guest'; bioSettingsHint.textContent = 'Biometric unlock requires a Google account.'; bioSettingsHint.classList.add('warn'); bioSetupBtn.disabled = true; bioSetupBtn.textContent = 'Sign in required'; bioRemoveBtn.style.display = 'none'; bioSettingsTestBadge.style.display = 'none'; return; }
     if (isTestMode()) { bioStatusLabel.textContent = 'Test Mode'; bioSettingsHint.textContent = 'Biometric is disabled while simulating a device.'; bioSettingsHint.classList.add('warn'); bioSetupBtn.disabled = true; bioSetupBtn.textContent = 'Disabled'; bioRemoveBtn.disabled = true; if (configured) bioRemoveBtn.style.display = ''; bioSettingsTestBadge.style.display = ''; return; }
     bioSettingsTestBadge.style.display = 'none';
@@ -3797,6 +4022,7 @@
     }
   }
   bioSetupBtn.addEventListener('click', async function () {
+    if (getMode() === 'super') return;
     if (isGuest) { showToast('Sign in with Google for more features'); return; }
     var block = getBioBlockReason();
     if (block.blocked) { bioMsg.textContent = block.reason; bioMsg.className = 'form-msg err'; return; }
@@ -3818,6 +4044,7 @@
     }
   });
   bioRemoveBtn.addEventListener('click', function () {
+    if (getMode() === 'super') return;
     clearBioCred();
     bioMsg.textContent = 'Biometric unlock removed.'; bioMsg.className = 'form-msg ok';
     refreshBioSettings();
