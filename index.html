@@ -493,9 +493,10 @@
   #lazySentinel{ height:1px; flex:0 0 auto; }
   .pattern-wrap{ display:flex; flex-direction:column; align-items:center; gap:10px; margin-top:6px; }
   .pattern-grid{
-    position:relative; width:240px; height:240px; margin:0 auto;
-    display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr);
-    gap:6px; padding:14px; border-radius:20px;
+    --n:3; --pg-size:240px; --pg-gap:6px; --pg-pad:14px; --dot:18px; --dot-bw:2px;
+    position:relative; width:min(var(--pg-size),100%); height:auto; aspect-ratio:1/1; margin:0 auto;
+    display:grid; grid-template-columns:repeat(var(--n),1fr); grid-template-rows:repeat(var(--n),1fr);
+    gap:var(--pg-gap); padding:var(--pg-pad); border-radius:20px;
     border:1px solid rgba(255,255,255,.1);
     background:rgba(255,255,255,.03);
     touch-action:none; -webkit-user-select:none; user-select:none;
@@ -504,9 +505,9 @@
   .pattern-svg{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:2; border-radius:inherit; }
   .pattern-dot{ position:relative; display:grid; place-items:center; z-index:1; pointer-events:none; }
   .pattern-dot::before{
-    content:""; width:18px; height:18px; border-radius:50%;
+    content:""; width:var(--dot); height:var(--dot); border-radius:50%;
     background:rgba(255,255,255,.12);
-    border:2px solid rgba(255,255,255,.3);
+    border:var(--dot-bw) solid rgba(255,255,255,.3);
     transition:all .15s ease;
   }
   .pattern-dot.active::before{
@@ -514,6 +515,10 @@
     box-shadow:0 0 14px rgba(255,255,255,.7);
     transform:scale(1.2);
   }
+  .pattern-grid.pg9{ --pg-size:310px; --pg-gap:3px; --pg-pad:10px; --dot:9px; --dot-bw:1.5px; border-radius:16px; }
+  .pattern-grid.pg16{ --pg-size:340px; --pg-gap:1px; --pg-pad:8px; --dot:6px; --dot-bw:1px; border-radius:14px; }
+  .pattern-grid.pg9 .pattern-dot.active::before{ transform:scale(1.35); box-shadow:0 0 9px rgba(255,255,255,.7); }
+  .pattern-grid.pg16 .pattern-dot.active::before{ transform:scale(1.5); box-shadow:0 0 6px rgba(255,255,255,.7); }
   .pattern-msg{ text-align:center; font-size:12px; letter-spacing:.04em; min-height:16px; color:#ff8a8a; margin:0; }
   .pattern-msg.warn{ color:#ffc46b; }
   .pattern-msg.ok{ color:#8ef0b5; }
@@ -536,7 +541,9 @@
     .settings-card{ padding:18px; }
     .backup-code{ font-size:13px; letter-spacing:.1em; padding:16px 10px; }
     .storage-banner{ font-size:11.5px; padding:10px 12px; }
-    .pattern-grid{ width:210px; height:210px; }
+    .pattern-grid{ --pg-size:210px; }
+    .pattern-grid.pg9{ --pg-size:300px; }
+    .pattern-grid.pg16{ --pg-size:320px; }
   }
   @media (prefers-reduced-motion:reduce){
     *,*::before,*::after{ animation:none !important; transition:none !important; }
@@ -678,7 +685,7 @@
       <div class="setup-step" data-step="choose">
         <div class="setup-head">
           <h2>Before Using</h2>
-          <p>Please make your own password. It protects your data — it is never stored anywhere.</p>
+          <p>Please make your own password. It protects your data. It is never stored anywhere.</p>
         </div>
         <div class="setup-options">
           <button class="setup-option" data-type="passcode" type="button">
@@ -695,7 +702,7 @@
           </button>
           <button class="setup-option tag-legacy" data-type="legacy" type="button">
             <span class="setup-option-title">Legacy / Other</span>
-            <span class="setup-option-desc">Pattern or 4-digit PIN. Easier to enter.</span>
+            <span class="setup-option-desc">Patterns or 4-digit PIN. Easier to enter.</span>
           </button>
         </div>
       </div>
@@ -736,7 +743,15 @@
         <div class="setup-options">
           <button class="setup-option" data-legacy="pattern" type="button">
             <span class="setup-option-title">Pattern</span>
-            <span class="setup-option-desc">Draw a pattern on a 3×3 grid. Minimum 4 dots.</span>
+            <span class="setup-option-desc">Draw a pattern on a 3x3 grid. Minimum 4 dots.</span>
+          </button>
+          <button class="setup-option" data-legacy="pattern9" type="button">
+            <span class="setup-option-title">High Pattern Security</span>
+            <span class="setup-option-desc">Draw a pattern on a 9x9 grid. Minimum 8 dots. Much harder to guess than 3x3.</span>
+          </button>
+          <button class="setup-option" data-legacy="pattern16" type="button">
+            <span class="setup-option-title">Extreme Pattern Security</span>
+            <span class="setup-option-desc">Draw a pattern on a 16x16 grid. Minimum 12 dots. Hardest to guess, slower to draw.</span>
           </button>
           <button class="setup-option" data-legacy="pin4" type="button">
             <span class="setup-option-title">4-digit PIN</span>
@@ -961,10 +976,10 @@
           <div class="field" style="margin-top:12px;">
             <label for="iterSelect">Key Derivation Iterations</label>
             <select id="iterSelect">
-              <option value="250000">250,000 — Fast</option>
-              <option value="600000">600,000 — Balanced (default)</option>
-              <option value="1000000">1,000,000 — Strong</option>
-              <option value="2000000">2,000,000 — Maximum</option>
+              <option value="250000">250,000 (Fast)</option>
+              <option value="600000">600,000 (Balanced, default)</option>
+              <option value="1000000">1,000,000 (Strong)</option>
+              <option value="2000000">2,000,000 (Maximum)</option>
             </select>
           </div>
           <p class="mode-hint">Higher iterations slow down brute-force attacks on your credential.</p>
@@ -1143,7 +1158,7 @@
           <div class="divider"></div>
           <p class="sec-title">Diagnostics</p>
           <div class="device-info" id="storageDiag">
-            <div class="device-row"><span class="device-key">Loading…</span><span class="device-val">—</span></div>
+            <div class="device-row"><span class="device-key">Loading…</span><span class="device-val">-</span></div>
           </div>
           <button class="btn ghost" id="refreshDiagBtn" type="button" style="margin-top:10px;">Re-run Diagnostics</button>
           <div class="divider"></div>
@@ -1255,7 +1270,7 @@
           </select>
         </div>
         <p class="mode-hint">Simulation overrides device model and OS, and disables biometric unlock to prevent conflicts.</p>
-        <p class="mode-hint warn" id="devTestBadge" style="display:none;">Test Mode active — biometric is disabled.</p>
+        <p class="mode-hint warn" id="devTestBadge" style="display:none;">Test Mode active: biometric is disabled.</p>
         <button class="btn ghost" id="returnDefaultBtn" type="button">Return to Default</button>
         <div class="divider tight"></div>
         <p class="sec-title">External Link</p>
@@ -1290,6 +1305,21 @@
       <div class="export-actions">
         <button class="btn ghost" id="externalCancel" type="button">Cancel</button>
         <button class="btn" id="externalConfirm" type="button">Open</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="export-overlay" id="legacyWarnOverlay" role="dialog" aria-modal="true">
+    <div class="export-card">
+      <div class="export-head">
+        <h2>Weaker Options</h2>
+        <button class="close-btn" id="closeLegacyWarn" type="button" aria-label="Close">&times;</button>
+      </div>
+      <p class="export-sub">These types are usually worse than a passcode or password. They are shorter, easier to guess, and easier for someone to copy by watching you unlock.</p>
+      <p class="mode-hint warn">Be careful. Do not reuse the pattern or PIN from your phone or anything else, avoid simple shapes and common numbers, and keep your backup code somewhere safe. The bigger pattern grids are stronger than 3x3, and a 4-digit PIN is the weakest choice here.</p>
+      <div class="export-actions">
+        <button class="btn ghost" id="legacyWarnCancel" type="button">Go Back</button>
+        <button class="btn" id="legacyWarnContinue" type="button">I Understand</button>
       </div>
     </div>
   </div>
@@ -1413,7 +1443,7 @@
         </span>
         <span class="check-label">
           <span class="check-title">Include mode info</span>
-          <span class="check-desc">Credential is never exported — this only includes the mode flag.</span>
+          <span class="check-desc">Credential is never exported. This only includes the mode flag.</span>
         </span>
       </label>
       <label class="check-row" for="exportRemember">
@@ -1482,6 +1512,12 @@
   var MIN_PASSWORD_LEN = 32;
   var MIN_ULTRA_LEN = 128;
   var MIN_PATTERN_DOTS = 4;
+  var PATTERN_MODES = {
+    pattern:   { n: 3,  min: MIN_PATTERN_DOTS, label: 'Pattern (legacy)' },
+    pattern9:  { n: 9,  min: 8,  label: 'High Pattern Security (9x9)' },
+    pattern16: { n: 16, min: 12, label: 'Extreme Pattern Security (16x16)' }
+  };
+  function isPatternMode(m) { return Object.prototype.hasOwnProperty.call(PATTERN_MODES, m); }
   var REVERT_WINDOW_MS = 72 * 60 * 60 * 1000;
   var MAX_TRIES = 3;
   var LOCKOUT_DURATIONS = [15 * 60 * 1000, 30 * 60 * 1000, 24 * 60 * 60 * 1000];
@@ -1626,23 +1662,49 @@
     return weak.indexOf(code) !== -1;
   }
 
-  function initPatternGrid(gridEl, onComplete) {
-    var dots = gridEl.querySelectorAll('.pattern-dot');
+  function initPatternGrid(gridEl, onComplete, initialSize) {
     var svg = gridEl.querySelector('.pattern-svg');
+    var dots = [];
+    var size = 3;
     var sequence = [];
     var isDrawing = false;
     var activePointer = null;
     var rects = [];
     var gridRect = null;
     var tail = null;
+    var lastPt = null;
+    var hitScale = 1;
+    var stepPx = 4;
 
+    function gcd(a, b) { while (b) { var t = b; b = a % b; a = t; } return a; }
+
+    function setSize(n) {
+      size = n;
+      gridEl.classList.remove('pg9', 'pg16');
+      if (n === 9) gridEl.classList.add('pg9');
+      else if (n === 16) gridEl.classList.add('pg16');
+      gridEl.style.setProperty('--n', String(n));
+      var old = gridEl.querySelectorAll('.pattern-dot');
+      for (var i = 0; i < old.length; i++) old[i].parentNode.removeChild(old[i]);
+      var frag = document.createDocumentFragment();
+      for (var j = 0; j < n * n; j++) { var d = document.createElement('div'); d.className = 'pattern-dot'; frag.appendChild(d); }
+      gridEl.appendChild(frag);
+      dots = gridEl.querySelectorAll('.pattern-dot');
+      hitScale = n <= 3 ? 1 : (n <= 9 ? 0.85 : 0.8);
+      reset();
+      updateRects();
+    }
     function updateRects() {
       gridRect = gridEl.getBoundingClientRect();
       rects = [];
+      var minR = Infinity;
       for (var i = 0; i < dots.length; i++) {
         var r = dots[i].getBoundingClientRect();
-        rects.push({ x: r.left + r.width/2, y: r.top + r.height/2, r: Math.min(r.width, r.height)/2, el: dots[i] });
+        var rad = Math.min(r.width, r.height) / 2 * hitScale;
+        if (rad < minR) minR = rad;
+        rects.push({ x: r.left + r.width/2, y: r.top + r.height/2, r: rad });
       }
+      stepPx = Math.max(2, (isFinite(minR) ? minR : 8) / 2);
     }
     function hitTest(x, y) {
       for (var i = 0; i < rects.length; i++) {
@@ -1656,15 +1718,16 @@
       if (!gridRect || !rects.length) return;
       var offX = gridRect.left + gridEl.clientLeft;
       var offY = gridRect.top + gridEl.clientTop;
+      var sw = size <= 3 ? 3 : (size <= 9 ? 2.5 : 1.5);
       var html = '';
-      var stroke = 'stroke="rgba(255,255,255,.85)" stroke-width="3" stroke-linecap="round"';
+      var stroke = 'stroke="rgba(255,255,255,.85)" stroke-width="' + sw + '" stroke-linecap="round"';
       for (var i = 1; i < sequence.length; i++) {
         var a = rects[sequence[i-1]], b = rects[sequence[i]];
         html += '<line x1="'+(a.x-offX)+'" y1="'+(a.y-offY)+'" x2="'+(b.x-offX)+'" y2="'+(b.y-offY)+'" '+stroke+'/>';
       }
       if (isDrawing && tail && sequence.length) {
         var l = rects[sequence[sequence.length-1]];
-        html += '<line x1="'+(l.x-offX)+'" y1="'+(l.y-offY)+'" x2="'+(tail.x-offX)+'" y2="'+(tail.y-offY)+'" stroke="rgba(255,255,255,.4)" stroke-width="3" stroke-linecap="round"/>';
+        html += '<line x1="'+(l.x-offX)+'" y1="'+(l.y-offY)+'" x2="'+(tail.x-offX)+'" y2="'+(tail.y-offY)+'" stroke="rgba(255,255,255,.4)" stroke-width="' + sw + '" stroke-linecap="round"/>';
       }
       svg.innerHTML = html;
     }
@@ -1672,23 +1735,37 @@
       sequence.push(idx);
       dots[idx].classList.add('active');
     }
+    // Dots that sit exactly on the straight line between two dots (grid lattice points).
+    function between(a, b) {
+      var r1 = Math.floor(a / size), c1 = a % size, r2 = Math.floor(b / size), c2 = b % size;
+      var dr = r2 - r1, dc = c2 - c1, g = gcd(Math.abs(dr), Math.abs(dc)), out = [];
+      for (var k = 1; k < g; k++) out.push((r1 + dr * k / g) * size + (c1 + dc * k / g));
+      return out;
+    }
     function addDot(idx) {
       if (sequence.indexOf(idx) !== -1) return;
-      // Straight line across the grid passes through the middle dot: include it (like Android).
       if (sequence.length) {
-        var last = sequence[sequence.length - 1];
-        var r1 = Math.floor(last / 3), c1 = last % 3, r2 = Math.floor(idx / 3), c2 = idx % 3;
-        if ((r1 + r2) % 2 === 0 && (c1 + c2) % 2 === 0) {
-          var mid = ((r1 + r2) / 2) * 3 + (c1 + c2) / 2;
-          if (mid !== last && mid !== idx && sequence.indexOf(mid) === -1) pushDot(mid);
-        }
+        var mids = between(sequence[sequence.length - 1], idx);
+        for (var m = 0; m < mids.length; m++) if (sequence.indexOf(mids[m]) === -1) pushDot(mids[m]);
       }
       pushDot(idx);
+    }
+    // Walk the finger path in small steps so quick swipes never skip a dot.
+    function sampleTo(x, y) {
+      var from = lastPt || { x: x, y: y };
+      var dx = x - from.x, dy = y - from.y;
+      var steps = Math.max(1, Math.ceil(Math.sqrt(dx*dx + dy*dy) / stepPx));
+      for (var t = 1; t <= steps; t++) {
+        var idx = hitTest(from.x + dx * t / steps, from.y + dy * t / steps);
+        if (idx !== -1) addDot(idx);
+      }
+      lastPt = { x: x, y: y };
     }
     function reset() {
       sequence = [];
       tail = null;
-      svg.innerHTML = '';
+      lastPt = null;
+      if (svg) svg.innerHTML = '';
       for (var i = 0; i < dots.length; i++) dots[i].classList.remove('active');
       isDrawing = false;
       activePointer = null;
@@ -1701,6 +1778,7 @@
       isDrawing = true;
       activePointer = e.pointerId;
       try { gridEl.setPointerCapture(e.pointerId); } catch (err) {}
+      lastPt = { x: e.clientX, y: e.clientY };
       var idx = hitTest(e.clientX, e.clientY);
       if (idx !== -1) addDot(idx);
       tail = { x: e.clientX, y: e.clientY };
@@ -1709,8 +1787,7 @@
     function handleMove(e) {
       if (!isDrawing || e.pointerId !== activePointer) return;
       e.preventDefault();
-      var idx = hitTest(e.clientX, e.clientY);
-      if (idx !== -1) addDot(idx);
+      sampleTo(e.clientX, e.clientY);
       tail = { x: e.clientX, y: e.clientY };
       drawLines();
     }
@@ -1730,7 +1807,8 @@
     gridEl.addEventListener('pointercancel', handleEnd);
     window.addEventListener('resize', function () { if (!isDrawing) updateRects(); });
 
-    return { reset: reset, updateRects: updateRects };
+    setSize(initialSize || 3);
+    return { reset: reset, updateRects: updateRects, setSize: setSize, getSize: function () { return size; } };
   }
 
   var vaultCEK = null;
@@ -1813,7 +1891,7 @@
     return dur;
   }
 
-  var VALID_MODES = ['passcode', 'pin4', 'pattern', 'password', 'ultra'];
+  var VALID_MODES = ['passcode', 'pin4', 'pattern', 'pattern9', 'pattern16', 'password', 'ultra'];
   function modeFromHint(h) { return VALID_MODES.indexOf(h) !== -1 ? h : 'passcode'; }
   function ensureModeHint() {
     if (isGuest || !vaultRawMemory || !vaultPayload) return;
@@ -2107,7 +2185,7 @@
     bioGateTestBadge.style.display = 'none';
     if (block.blocked) {
       bioFaceBtn.disabled = true; bioFingerBtn.disabled = true;
-      bioHint.textContent = block.reason + ' — ' + block.detail;
+      bioHint.textContent = block.reason + ': ' + block.detail;
       bioHint.style.color = '#ffc46b';
     } else {
       bioFaceBtn.disabled = false; bioFingerBtn.disabled = false;
@@ -2128,16 +2206,18 @@
       if (mode === 'ultra') { gateTitle.textContent = 'Enter Ultra Password'; setGateSub(MIN_ULTRA_LEN + '+ characters required'); }
       else if (mode === 'password') { gateTitle.textContent = 'Enter Password'; setGateSub(MIN_PASSWORD_LEN + '+ characters required'); }
       else if (mode === 'pin4') { gateTitle.textContent = 'Enter PIN'; setGateSub('4 digits required'); }
-      else if (mode === 'pattern') { gateTitle.textContent = 'Draw Pattern'; setGateSub('Connect at least 4 dots'); }
+      else if (isPatternMode(mode)) { gateTitle.textContent = 'Draw Pattern'; setGateSub('Connect at least ' + PATTERN_MODES[mode].min + ' dots'); }
       else { gateTitle.textContent = 'Enter Passcode'; setGateSub('6 digits required'); }
     }
 
-    if (mode === 'pattern') {
+    if (isPatternMode(mode)) {
       keypad.style.display = 'none'; dotsEl.style.display = 'none'; passwordWrap.style.display = 'none';
       patternWrap.style.display = 'flex';
       gatePatternMsg.textContent = '';
       gatePatternMsg.className = 'pattern-msg';
-      if (!gatePatternCtl) gatePatternCtl = initPatternGrid(gatePatternGrid, handleGatePatternComplete);
+      var gateN = PATTERN_MODES[mode].n;
+      if (!gatePatternCtl) gatePatternCtl = initPatternGrid(gatePatternGrid, handleGatePatternComplete, gateN);
+      else if (gatePatternCtl.getSize() !== gateN) gatePatternCtl.setSize(gateN);
       setTimeout(function () { gatePatternCtl.updateRects(); gatePatternCtl.reset(); }, 60);
     } else if (mode === 'pin4' || mode === 'passcode') {
       keypad.style.display = ''; dotsEl.style.display = ''; passwordWrap.style.display = 'none';
@@ -2157,8 +2237,9 @@
 
   function handleGatePatternComplete(seq) {
     if (verifying || isGuest) return;
-    if (seq.length < MIN_PATTERN_DOTS) {
-      gatePatternMsg.textContent = 'Connect at least ' + MIN_PATTERN_DOTS + ' dots.';
+    var gateMin = PATTERN_MODES[getMode()] ? PATTERN_MODES[getMode()].min : MIN_PATTERN_DOTS;
+    if (seq.length < gateMin) {
+      gatePatternMsg.textContent = 'Connect at least ' + gateMin + ' dots.';
       gatePatternMsg.className = 'pattern-msg';
       setTimeout(function () { if (gatePatternCtl) gatePatternCtl.reset(); }, 500);
       return;
@@ -2219,7 +2300,7 @@
     shakeDots();
     setGateMsg(remaining + (remaining === 1 ? ' try left' : ' tries left'), 'warn');
     setTimeout(function () { if (gateLocked.style.display === 'none') setGateMsg(''); }, 1800);
-    if (getMode() === 'pattern' && gatePatternMsg) {
+    if (isPatternMode(getMode()) && gatePatternMsg) {
       gatePatternMsg.textContent = remaining + (remaining === 1 ? ' try left' : ' tries left');
       gatePatternMsg.className = 'pattern-msg warn';
     }
@@ -2229,7 +2310,7 @@
   async function tryUnlock(enteredValue) {
     if (verifying || isGuest) return;
     verifying = true;
-    if (getMode() === 'pattern') { gatePatternMsg.textContent = 'Verifying…'; gatePatternMsg.className = 'pattern-msg warn'; }
+    if (isPatternMode(getMode())) { gatePatternMsg.textContent = 'Verifying…'; gatePatternMsg.className = 'pattern-msg warn'; }
     else setGateMsg('Verifying…', 'warn');
     try {
       if (!vaultRawMemory || !vaultRawMemory.kek || !vaultRawMemory.kek.pass) throw new Error('no vault');
@@ -2246,19 +2327,19 @@
     } catch (e) {
       verifying = false; entered = ''; renderDots();
       setGateMsg('');
-      if (getMode() === 'pattern' && gatePatternMsg) {
+      if (isPatternMode(getMode()) && gatePatternMsg) {
         gatePatternMsg.textContent = '';
         gatePatternMsg.className = 'pattern-msg';
       }
       onWrongAttempt();
-      if (getMode() === 'pattern' && gatePatternCtl) setTimeout(function () { gatePatternCtl.reset(); }, 300);
+      if (isPatternMode(getMode()) && gatePatternCtl) setTimeout(function () { gatePatternCtl.reset(); }, 300);
     }
   }
 
   keypad.addEventListener('click', function (e) {
     var btn = e.target.closest('.key');
     if (!btn || btn.classList.contains('empty') || verifying || isGuest) return;
-    if (getMode() === 'pattern') return;
+    if (isPatternMode(getMode())) return;
     var k = btn.getAttribute('data-k');
     var reqLen = getRequiredLen();
     if (k === 'del') { entered = entered.slice(0, -1); renderDots(); return; }
@@ -2387,7 +2468,7 @@
     switchView('anniversary');
     refreshAllSettingsUI();
     applyGuestGuards();
-    showToast('Guest mode — data is stored locally only');
+    showToast('Guest mode: data is stored locally only');
   }
   function exitGuestMode() {
     isGuest = false;
@@ -2413,7 +2494,7 @@
     if (isGuest) {
       if (guestSignBtn) guestSignBtn.style.display = '';
       if (signOutBtn) signOutBtn.style.display = 'none';
-      if (accountHint) accountHint.textContent = 'Guest mode — data stored locally, not synced';
+      if (accountHint) accountHint.textContent = 'Guest mode: data stored locally, not synced';
     } else {
       if (guestSignBtn) guestSignBtn.style.display = 'none';
       if (signOutBtn) signOutBtn.style.display = '';
@@ -2549,6 +2630,13 @@
   var setupLegacyFirstPattern = null;
   var setupPatternCtl = null;
   var setupPatternBusy = false;
+  var legacyWarnOverlay = document.getElementById('legacyWarnOverlay');
+  function openLegacyWarn() { legacyWarnOverlay.classList.add('open'); }
+  function closeLegacyWarn() { legacyWarnOverlay.classList.remove('open'); }
+  document.getElementById('legacyWarnCancel').addEventListener('click', closeLegacyWarn);
+  document.getElementById('closeLegacyWarn').addEventListener('click', closeLegacyWarn);
+  legacyWarnOverlay.addEventListener('click', function (e) { if (e.target === legacyWarnOverlay) closeLegacyWarn(); });
+  document.getElementById('legacyWarnContinue').addEventListener('click', function () { closeLegacyWarn(); showSetupStep('legacy-choice'); });
 
   function showSetupStep(name) {
     for (var i = 0; i < setupSteps.length; i++) setupSteps[i].hidden = setupSteps[i].getAttribute('data-step') !== name;
@@ -2573,18 +2661,21 @@
     setTimeout(function () { setupOverlay.hidden = true; }, 400);
   }
 
-  function beginLegacyPattern() {
-    setupLegacyType = 'pattern';
+  function beginLegacyPattern(type) {
+    setupLegacyType = isPatternMode(type) ? type : 'pattern';
+    var cfg = PATTERN_MODES[setupLegacyType];
     setupLegacyFirstPattern = null;
+    setupPatternBusy = false;
     legacyEnterTitle.textContent = 'Draw Pattern';
-    legacyEnterDesc.textContent = 'Connect at least ' + MIN_PATTERN_DOTS + ' dots. You will draw it twice.';
+    legacyEnterDesc.textContent = 'Connect at least ' + cfg.min + ' dots on the ' + cfg.n + 'x' + cfg.n + ' grid. You will draw it twice.';
     legacyPatternForm.style.display = '';
     legacyPin4Form.style.display = 'none';
     setupPatternMsg.textContent = 'Draw your pattern';
     setupPatternMsg.className = 'pattern-msg warn';
     showSetupStep('legacy-enter');
     setTimeout(function () {
-      if (!setupPatternCtl) setupPatternCtl = initPatternGrid(document.getElementById('setupPatternGrid'), handleSetupPatternComplete);
+      if (!setupPatternCtl) setupPatternCtl = initPatternGrid(document.getElementById('setupPatternGrid'), handleSetupPatternComplete, cfg.n);
+      else if (setupPatternCtl.getSize() !== cfg.n) setupPatternCtl.setSize(cfg.n);
       setupPatternCtl.updateRects();
       setupPatternCtl.reset();
     }, 80);
@@ -2602,8 +2693,9 @@
   }
 
   function handleSetupPatternComplete(seq) {
-    if (seq.length < MIN_PATTERN_DOTS) {
-      setupPatternMsg.textContent = 'Connect at least ' + MIN_PATTERN_DOTS + ' dots.';
+    var setupMin = PATTERN_MODES[setupLegacyType] ? PATTERN_MODES[setupLegacyType].min : MIN_PATTERN_DOTS;
+    if (seq.length < setupMin) {
+      setupPatternMsg.textContent = 'Connect at least ' + setupMin + ' dots.';
       setupPatternMsg.className = 'pattern-msg';
       setTimeout(function () { if (setupPatternCtl) setupPatternCtl.reset(); }, 500);
       return;
@@ -2627,7 +2719,7 @@
     setupPatternBusy = true;
     setupPatternMsg.textContent = 'Pattern confirmed.';
     setupPatternMsg.className = 'pattern-msg ok';
-    performSetupEncryption(cred, 'pattern', setupPatternMsg).then(function () {
+    performSetupEncryption(cred, setupLegacyType, setupPatternMsg).then(function () {
       setupPatternBusy = false; setupLegacyFirstPattern = null;
     });
   }
@@ -2650,7 +2742,7 @@
     var leg = e.target.closest('[data-legacy]');
     if (leg) {
       var ltype = leg.getAttribute('data-legacy');
-      if (ltype === 'pattern') beginLegacyPattern();
+      if (isPatternMode(ltype)) beginLegacyPattern(ltype);
       else if (ltype === 'pin4') beginLegacyPin4();
       return;
     }
@@ -2659,7 +2751,7 @@
     if (!opt) return;
     var t = opt.getAttribute('data-type');
     if (!t) return;
-    if (t === 'legacy') { showSetupStep('legacy-choice'); return; }
+    if (t === 'legacy') { openLegacyWarn(); return; }
     setupChosenType = t;
     if (setupChosenType === 'passcode') {
       setupEnterTitle.textContent = 'Choose Default Password';
@@ -3291,7 +3383,7 @@
     var lsOK = false;
     try { localStorage.setItem('__t','1'); lsOK = localStorage.getItem('__t') === '1'; localStorage.removeItem('__t'); } catch(e){}
     rows.push(['Mode', isGuest ? 'Guest' : 'Signed in', true]);
-    if (!isGuest) rows.push(['User ID', fbUser ? fbUser.uid.slice(0, 12) + '…' : '—', !!fbUser]);
+    if (!isGuest) rows.push(['User ID', fbUser ? fbUser.uid.slice(0, 12) + '…' : '-', !!fbUser]);
     rows.push(['Firestore connected', fbDb ? 'Yes' : 'No', !!fbDb]);
     rows.push(['Web Crypto', crypto && crypto.subtle ? 'Yes' : 'No', !!(crypto && crypto.subtle)]);
     rows.push(['Secure context', isSecureContextOK ? 'Yes' : 'No', isSecureContextOK]);
@@ -3332,7 +3424,7 @@
     e.preventDefault();
     if (isGuest) { changeMsg.textContent = 'Sign in to change your credential.'; changeMsg.className = 'form-msg err'; return; }
     var mode = getMode();
-    if (mode === 'pattern' || mode === 'pin4') { changeMsg.textContent = 'Switch credential type first.'; changeMsg.className = 'form-msg err'; return; }
+    if (isPatternMode(mode) || mode === 'pin4') { changeMsg.textContent = 'Switch credential type first.'; changeMsg.className = 'form-msg err'; return; }
     var cur = curPass.value, nw = newPass.value, cf = cfmPass.value;
     if (mode === 'passcode') {
       if (!/^\d{6}$/.test(nw)) { changeMsg.textContent = 'New passcode must be exactly 6 digits.'; changeMsg.className = 'form-msg err'; return; }
@@ -3445,12 +3537,12 @@
 
   function refreshModeDisplay() {
     var mode = getMode();
-    var isLegacy = (mode === 'pattern' || mode === 'pin4');
+    var isLegacy = (isPatternMode(mode) || mode === 'pin4');
     if (legacyChangeMsg) legacyChangeMsg.style.display = isLegacy ? '' : 'none';
     changeForm.style.display = isLegacy ? 'none' : '';
 
     if (isGuest) {
-      currentModeLabel.textContent = 'Guest mode — not encrypted';
+      currentModeLabel.textContent = 'Guest mode: not encrypted';
       switchModeBtn.textContent = 'Sign in for encryption';
       ultraModeLabel.textContent = 'Not available';
       ultraSwitchBtn.style.display = 'none';
@@ -3468,8 +3560,8 @@
       ultraModeLabel.textContent = 'Not active';
       ultraModeHint.textContent = 'Maximum security tier. Requires a 128-character password.';
       ultraSwitchBtn.style.display = '';
-    } else if (mode === 'pattern') {
-      currentModeLabel.textContent = 'Pattern (legacy)';
+    } else if (isPatternMode(mode)) {
+      currentModeLabel.textContent = PATTERN_MODES[mode].label;
       switchModeBtn.textContent = 'Switch to Passcode Mode';
       ultraModeLabel.textContent = 'Not active';
       ultraModeHint.textContent = 'Maximum security tier. Requires a 128-character password.';
@@ -3527,7 +3619,7 @@
     var cur = iterCur.value;
     var mode = getMode();
     if (!cur) { iterMsg.textContent = 'Enter your current credential.'; iterMsg.className = 'form-msg err'; return; }
-    if (mode === 'pattern') { iterMsg.textContent = 'Switch to a password or passcode to change this.'; iterMsg.className = 'form-msg err'; return; }
+    if (isPatternMode(mode)) { iterMsg.textContent = 'Switch to a password or passcode to change this.'; iterMsg.className = 'form-msg err'; return; }
     if (!newIter || !vaultRawMemory) return;
     if (newIter === vaultRawMemory.kek.pass.iterations) { iterMsg.textContent = 'No change.'; iterMsg.className = 'form-msg warn'; return; }
     iterMsg.textContent = 'Applying…'; iterMsg.className = 'form-msg';
@@ -3568,7 +3660,7 @@
       switchCfm.placeholder = 'Minimum ' + MIN_PASSWORD_LEN + ' characters';
     } else {
       switchCur.classList.remove('digits'); switchCur.removeAttribute('maxlength'); switchCur.removeAttribute('inputmode');
-      switchCur.placeholder = (mode === 'pattern') ? 'Pattern as dots, e.g. 0-1-2-5' : 'Current credential';
+      switchCur.placeholder = isPatternMode(mode) ? 'Pattern as dot numbers, e.g. 0-1-2-5' : 'Current credential';
       switchNew.classList.add('digits'); switchNew.setAttribute('maxlength', '6'); switchNew.setAttribute('inputmode', 'numeric');
       switchNew.placeholder = '••••••';
       switchCfm.classList.add('digits'); switchCfm.setAttribute('maxlength', '6'); switchCfm.setAttribute('inputmode', 'numeric');
@@ -3848,7 +3940,7 @@
       var nBWrapped = await wrapCEK(cek, nBKek);
       newRaw.kek.backup = { salt: b64(nBSalt), iterations: DEFAULT_ITERATIONS, wrappedCek: nBWrapped };
       saveVaultRaw(newRaw);
-      setTimeout(function () { window.alert('Imported. Your new backup code is:\n\n' + newBackup + '\n\nSave this — it will not be shown again.'); }, 300);
+      setTimeout(function () { window.alert('Imported. Your new backup code is:\n\n' + newBackup + '\n\nSave this. It will not be shown again.'); }, 300);
       importOldMsg.textContent = 'Imported. Reloading…'; importOldMsg.className = 'form-msg ok';
       setTimeout(function () { location.reload(); }, 900);
     } catch (e) { importOldMsg.textContent = 'Wrong credential or corrupted file.'; importOldMsg.className = 'form-msg err'; }
@@ -3961,7 +4053,7 @@
       (bioCred ? (bioCred.mode === 'prf' ? 'Cryptographic (PRF)' : 'Convenience') :
       (webAuthnSupported && !getBioBlockReason().blocked ? 'Available' : 'Unavailable')));
     rows.push(['Biometric', bioStatus]);
-    if (simulatedDevice) rows.push(['Simulation', 'Active — ' + simulatedDevice]);
+    if (simulatedDevice) rows.push(['Simulation', 'Active: ' + simulatedDevice]);
     else if (isHuaweiReal) rows.push(['Vendor Note', 'Huawei / Honor detected']);
     var html = '';
     for (var i = 0; i < rows.length; i++) html += '<div class="device-row"><span class="device-key">' + rows[i][0] + '</span><span class="device-val">' + rows[i][1] + '</span></div>';
@@ -4114,6 +4206,7 @@
 
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'Escape') return;
+    if (legacyWarnOverlay.classList.contains('open')) { closeLegacyWarn(); return; }
     if (!setupOverlay.hidden) return;
     if (policyOverlay.classList.contains('open')) { closePolicyDialog(); return; }
     if (importOldOverlay.classList.contains('open')) { closeImportOldDialog(); return; }
