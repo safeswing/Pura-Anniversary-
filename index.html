@@ -34,6 +34,26 @@
     width:22px; height:22px; border-radius:50%;
     font-size:14px; line-height:1; cursor:pointer;
   }
+  .toast{
+    position:fixed;
+    bottom:24px; left:50%;
+    transform:translateX(-50%) translateY(20px);
+    padding:12px 18px;
+    border-radius:12px;
+    background:rgba(30,30,36,.95);
+    border:1px solid rgba(255,255,255,.15);
+    color:#fff;
+    font-size:13px; letter-spacing:.02em;
+    box-shadow:0 12px 30px -8px rgba(0,0,0,.85);
+    z-index:400;
+    opacity:0; pointer-events:none;
+    transition:opacity .25s ease, transform .25s ease;
+    -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px);
+    max-width:min(340px, calc(100vw - 40px));
+    text-align:center;
+    line-height:1.5;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
   .backdrop{ position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none; }
   .backdrop::before{ content:""; position:absolute; inset:-20%;
     background:
@@ -188,6 +208,15 @@
   .gate-title{ margin:0 0 6px; font-size:15px; font-weight:600; letter-spacing:.2em; text-transform:uppercase; color:#fff; }
   .gate-sub{ margin:0 0 22px; font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:rgba(244,244,246,.4); }
   .gate-sub.warn{ color:#ffc46b; }
+  .welcome-divider{
+    text-align:center; font-size:10.5px; letter-spacing:.18em; text-transform:uppercase;
+    color:rgba(244,244,246,.3); padding:4px 0;
+  }
+  .guest-note{
+    margin-top:14px; text-align:center;
+    font-size:11px; line-height:1.5; color:rgba(244,244,246,.4);
+    letter-spacing:.02em;
+  }
   .dots{ display:flex; justify-content:center; gap:14px; margin-bottom:28px; }
   .dots.shake{ animation:shake .45s cubic-bezier(.36,.07,.19,.97); }
   @keyframes shake{ 0%,100%{ transform:translateX(0); } 20%{ transform:translateX(-9px); } 40%{ transform:translateX(9px); }
@@ -361,6 +390,10 @@
     text-align:left; cursor:pointer; transition:all .2s ease; box-shadow:inset 0 1px 0 rgba(255,255,255,.08); width:100%; }
   .settings-item:hover{ background:rgba(255,255,255,.1); border-color:rgba(255,255,255,.2); }
   .settings-item.hidden{ display:none; }
+  .settings-item.guest-disabled{ opacity:.42; cursor:not-allowed; }
+  .settings-item.guest-disabled:hover{ background:rgba(255,255,255,.045); border-color:rgba(255,255,255,.1); }
+  .settings-item.guest-disabled .lbl b{ color:rgba(244,244,246,.55); }
+  .settings-item.guest-disabled .lbl span{ color:rgba(244,244,246,.35); }
   .settings-item .icon{ flex:none; width:36px; height:36px; border-radius:10px; display:grid; place-items:center;
     background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); color:rgba(255,255,255,.8); }
   .settings-item .icon svg{ width:17px; height:17px; }
@@ -502,6 +535,8 @@
     <button class="dismiss" id="storageBannerDismiss" type="button" aria-label="Dismiss">&times;</button>
   </div>
 
+  <div class="toast" id="toast"></div>
+
   <div class="backdrop" aria-hidden="true"></div>
   <div class="snow" id="snow" aria-hidden="true"></div>
 
@@ -520,6 +555,9 @@
           <span id="signInLabel">Sign in with Google</span>
         </button>
         <button class="btn ghost" id="btnLogIn" type="button">Log in</button>
+        <div class="welcome-divider">or</div>
+        <button class="btn ghost" id="btnGuest" type="button">Continue as a guest</button>
+        <p class="guest-note">Guest mode is local-only. Data is stored unencrypted on this device and cannot be synced.</p>
         <p class="form-msg" id="welcomeMsg"></p>
       </div>
     </div>
@@ -733,12 +771,12 @@
           <input id="settingsSearch" type="text" placeholder="Search settings" autocomplete="off" spellcheck="false">
         </div>
         <div class="settings-list" id="settingsList">
-          <button class="settings-item" data-target="security" type="button">
+          <button class="settings-item" data-target="security" data-requires-auth="1" type="button">
             <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></span>
             <span class="lbl"><b>Security</b><span>Change credential, revert, backup code</span></span>
             <span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg></span>
           </button>
-          <button class="settings-item" data-target="encryption" type="button">
+          <button class="settings-item" data-target="encryption" data-requires-auth="1" type="button">
             <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"></rect><path d="M8 9h8M8 13h5"></path></svg></span>
             <span class="lbl"><b>Encryption</b><span>Mode, iterations, password strength</span></span>
             <span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg></span>
@@ -748,7 +786,7 @@
             <span class="lbl"><b>Lock</b><span>Auto-lock idle timer, visibility</span></span>
             <span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg></span>
           </button>
-          <button class="settings-item" data-target="biometric" type="button">
+          <button class="settings-item" data-target="biometric" data-requires-auth="1" type="button">
             <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3"></path></svg></span>
             <span class="lbl"><b>Other Security</b><span>Face and fingerprint unlock</span></span>
             <span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg></span>
@@ -1055,6 +1093,7 @@
         <div class="subbody">
           <p class="sec-title">Account</p>
           <p class="mode-hint" id="accountHint">Signed in</p>
+          <button class="btn ghost" id="guestSignInBtn" type="button" style="display:none;margin-bottom:8px;">Sign in with Google</button>
           <button class="btn ghost" id="signOutBtn" type="button" style="margin-bottom:8px;">Sign out of Google</button>
           <div class="divider"></div>
           <p class="sec-title">Developer Mode</p>
@@ -1063,9 +1102,35 @@
           <div class="divider"></div>
           <p class="sec-title">Factory Reset</p>
           <p class="mode-hint">Erases your encrypted vault from Firestore, backup code, biometric enrollment, and all lock state. This cannot be undone.</p>
-          <button class="btn danger" id="factoryResetBtn" type="button">Factory Reset</button>
+          <button class="btn danger" id="factoryResetBtn" data-requires-auth="1" type="button">Factory Reset</button>
           <p class="form-msg" id="resetMsg"></p>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="export-overlay" id="policyOverlay" role="dialog" aria-modal="true">
+    <div class="export-card">
+      <div class="export-head">
+        <h2>Google Policies</h2>
+        <button class="close-btn" id="closePolicy" type="button" aria-label="Close">&times;</button>
+      </div>
+      <p class="export-sub">To continue using Google Sign-In with this app, you must agree to Google's policies. Not agreeing will take you to Google's policy page.</p>
+      <label class="check-row" for="policyDontAsk">
+        <input type="checkbox" id="policyDontAsk">
+        <span class="check-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </span>
+        <span class="check-label">
+          <span class="check-title">Don't ask again</span>
+          <span class="check-desc">Skip this dialog next time on this device.</span>
+        </span>
+      </label>
+      <div class="export-actions">
+        <button class="btn ghost" id="policyDecline" type="button">Not Agree</button>
+        <button class="btn" id="policyAgree" type="button">Agree</button>
       </div>
     </div>
   </div>
@@ -1314,15 +1379,16 @@
       fbAuth = firebase.auth();
       fbDb = firebase.firestore();
     }
-  } catch (e) {
-    console.error('Firebase init failed:', e);
-  }
+  } catch (e) { console.error('Firebase init failed:', e); }
 
+  var KEY_GUEST_VAULT = 'pura_guest_vault';
   var KEY_BIO_CRED = 'pura_bio_cred';
   var KEY_LOCK_STATE = 'pura_lock_state';
   var KEY_EXPORT_PREF = 'pura_export_pref';
   var KEY_EXTERNAL_OK = 'pura_external_ok';
+  var KEY_POLICY_OK = 'pura_policy_ok';
   var EXTERNAL_URL = 'https://www.tiktok.com/@safeswing5';
+  var GOOGLE_POLICY_URL = 'https://policies.google.com/terms';
 
   var DEFAULT_ITERATIONS = 600000;
   var MIN_PASSCODE_LEN = 6;
@@ -1334,6 +1400,9 @@
   var VAULT_VERSION = 3;
   var LAZY_BATCH = 60;
   var MAGIC = 'dHVya21lbmlzdGFuMjAyNg==';
+
+  var isGuest = false;
+  var pendingIntent = null;
 
   var storageBanner = document.getElementById('storageBanner');
   var storageBannerTitle = document.getElementById('storageBannerTitle');
@@ -1351,6 +1420,18 @@
     bannerDismissed = true;
     storageBanner.classList.remove('show');
   });
+
+  var toastEl = document.getElementById('toast');
+  var toastTimer = null;
+  function showToast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () {
+      toastEl.classList.remove('show');
+      toastTimer = null;
+    }, 2400);
+  }
 
   function safeGetItem(key) {
     try { return localStorage.getItem(key); } catch (e) { return null; }
@@ -1497,6 +1578,9 @@
       showStorageError('Serialization failed', 'Could not prepare vault: ' + (e.message || e));
       return false;
     }
+    if (isGuest) {
+      return safeSetItem(KEY_GUEST_VAULT, JSON.stringify(vaultRawMemory));
+    }
     queueFirestoreWrite();
     return true;
   }
@@ -1538,6 +1622,10 @@
 
   var saveChain = Promise.resolve();
   function saveVault() {
+    if (isGuest) {
+      if (!vaultPayload) return Promise.resolve(false);
+      return Promise.resolve(saveVaultRaw(vaultPayload));
+    }
     if (!vaultCEK || !vaultPayload || !vaultRawMemory) return Promise.resolve(false);
     var snap = JSON.parse(JSON.stringify(vaultPayload));
     var rawSnap = JSON.parse(JSON.stringify(vaultRawMemory));
@@ -1570,7 +1658,7 @@
   }
 
   function getMode() { return currentMode || 'passcode'; }
-  function isPasswordMode() { return getMode() !== 'passcode'; }
+  function isPasswordMode() { return getMode() !== 'passcode' && getMode() !== 'guest'; }
   function getNotes() { return vaultPayload && vaultPayload.notes ? vaultPayload.notes : {}; }
   function setNotes(o) { if (vaultPayload) { vaultPayload.notes = o; saveVault(); } }
   function getCapsules() { return vaultPayload && vaultPayload.capsules ? vaultPayload.capsules : []; }
@@ -1589,6 +1677,7 @@
     saveVault();
   }
   function getRevertInfo() {
+    if (isGuest) return null;
     if (!vaultRawMemory || !vaultRawMemory.kek || !vaultRawMemory.kek.pass || !vaultRawMemory.kek.pass.prev) return null;
     var p = vaultRawMemory.kek.pass.prev;
     var remaining = REVERT_WINDOW_MS - (Date.now() - p.time);
@@ -1632,6 +1721,7 @@
     return null;
   }
   function getBioBlockReason() {
+    if (isGuest) return { blocked: true, reason: 'Guest Mode', detail: 'Biometric unlock requires a Google account.' };
     if (isTestMode()) return { blocked: true, reason: 'Test Mode', detail: 'Biometric unlock is disabled while simulating a device.' };
     if (isEffectiveHuawei()) return { blocked: true, reason: 'Incompatible Device', detail: 'Biometric unlock is not supported on Huawei / Honor devices.' };
     if (isLocalFile) return { blocked: true, reason: 'Local File Detected', detail: 'Biometric unlock requires HTTPS.' };
@@ -1708,9 +1798,7 @@
       try {
         prfSalt = unb64(cred.prfSalt);
         credId = unb64(cred.credentialId);
-      } catch (parseErr) {
-        throw { reason: 'Biometric data corrupted' };
-      }
+      } catch (parseErr) { throw { reason: 'Biometric data corrupted' }; }
       var assertion = await navigator.credentials.get({
         publicKey: {
           challenge: randBytes(32),
@@ -1791,6 +1879,7 @@
   var welcomeOverlay = document.getElementById('welcomeOverlay');
   var btnSignIn = document.getElementById('btnSignIn');
   var btnLogIn = document.getElementById('btnLogIn');
+  var btnGuest = document.getElementById('btnGuest');
   var welcomeMsg = document.getElementById('welcomeMsg');
   var signInLabel = document.getElementById('signInLabel');
 
@@ -1863,6 +1952,13 @@
     else { bioFaceLabel.textContent = 'Open with Face Recognition'; bioFingerLabel.textContent = 'Or use Fingerprint'; }
     if (!configured || !canUse) { bioWrap.style.display = 'none'; return; }
     bioWrap.style.display = '';
+    if (isGuest) {
+      bioFaceBtn.disabled = true; bioFingerBtn.disabled = true;
+      bioHint.textContent = 'Biometric requires a Google account.';
+      bioHint.style.color = '#ffc46b';
+      bioGateTestBadge.style.display = '';
+      return;
+    }
     if (isTestMode()) {
       bioFaceBtn.disabled = true; bioFingerBtn.disabled = true;
       bioHint.textContent = 'Biometric is disabled while simulating a device.';
@@ -1969,7 +2065,7 @@
   function onCorrect() { resetLockState(); unlockUI(); }
 
   async function tryUnlock(enteredValue) {
-    if (verifying) return;
+    if (verifying || isGuest) return;
     verifying = true;
     setGateMsg('Verifying…', 'warn');
     try {
@@ -1992,7 +2088,7 @@
 
   keypad.addEventListener('click', function (e) {
     var btn = e.target.closest('.key');
-    if (!btn || btn.classList.contains('empty') || verifying) return;
+    if (!btn || btn.classList.contains('empty') || verifying || isGuest) return;
     var k = btn.getAttribute('data-k');
     if (k === 'del') { entered = entered.slice(0, -1); renderDots(); return; }
     if (entered.length < MIN_PASSCODE_LEN) {
@@ -2001,7 +2097,7 @@
     }
   });
   function tryPasswordSubmit() {
-    if (verifying) return;
+    if (verifying || isGuest) return;
     var val = passwordInput.value;
     if (!val) return;
     passwordInput.value = '';
@@ -2011,7 +2107,7 @@
   passwordInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') tryPasswordSubmit(); });
 
   document.addEventListener('keydown', function (e) {
-    if (gate.classList.contains('hidden') || verifying) return;
+    if (gate.classList.contains('hidden') || verifying || isGuest) return;
     if (recoveryMode) return;
     var s = getLockState();
     if (s.perm || s.until > Date.now()) return;
@@ -2023,6 +2119,7 @@
   });
 
   async function tryBiometric() {
+    if (isGuest) { setGateMsg('Biometric requires a Google account.', 'warn'); return; }
     var block = getBioBlockReason();
     if (block.blocked) { setGateMsg(block.reason, 'warn'); return; }
     setGateMsg('Waiting for device…', 'warn');
@@ -2050,7 +2147,7 @@
   bioFingerBtn.addEventListener('click', tryBiometric);
 
   forgotLink.addEventListener('click', function () {
-    if (verifying) return;
+    if (verifying || isGuest) return;
     recoveryMode = true;
     gateNormal.hidden = true;
     gateRecovery.hidden = false;
@@ -2067,7 +2164,7 @@
     showNormalUI();
   });
   recoverySubmit.addEventListener('click', async function () {
-    if (verifying) return;
+    if (verifying || isGuest) return;
     var code = normalizeBackupCode(recoveryInput.value);
     if (code.length < 20) { setGateMsg('Invalid backup code format.', 'err'); return; }
     if (!vaultRawMemory || !vaultRawMemory.kek || !vaultRawMemory.kek.backup) { setGateMsg('No backup code is registered.', 'err'); return; }
@@ -2105,13 +2202,116 @@
     setTimeout(function () { welcomeOverlay.style.display = 'none'; }, 400);
   }
 
-  async function handleGoogleSignIn(intent) {
+  function enterGuestMode() {
+    isGuest = true;
+    currentMode = 'guest';
+    var raw = safeGetItem(KEY_GUEST_VAULT);
+    var payload = null;
+    if (raw) {
+      try { payload = JSON.parse(raw); } catch (e) { payload = null; }
+    }
+    if (!payload || typeof payload !== 'object') {
+      payload = {
+        guest: true,
+        setupComplete: true,
+        mode: 'guest',
+        notes: {},
+        capsules: [],
+        settings: { idleMs: 300000, strictLock: false, visibilityLock: true }
+      };
+      safeSetItem(KEY_GUEST_VAULT, JSON.stringify(payload));
+    }
+    vaultRawMemory = payload;
+    vaultPayload = payload;
+    hideWelcome();
+    gate.classList.add('hidden');
+    gate.style.display = 'none';
+    switchView('anniversary');
+    refreshAllSettingsUI();
+    applyGuestGuards();
+    showToast('Guest mode — data is stored locally only');
+  }
+
+  function exitGuestMode() {
+    isGuest = false;
+    vaultRawMemory = null;
+    vaultPayload = null;
+    vaultCEK = null;
+    currentMode = 'passcode';
+  }
+
+  function applyGuestGuards() {
+    var items = document.querySelectorAll('.settings-item[data-requires-auth="1"]');
+    for (var i = 0; i < items.length; i++) {
+      if (isGuest) items[i].classList.add('guest-disabled');
+      else items[i].classList.remove('guest-disabled');
+    }
+    var factoryBtn = document.getElementById('factoryResetBtn');
+    if (factoryBtn) {
+      if (isGuest) factoryBtn.classList.add('guest-disabled');
+      else factoryBtn.classList.remove('guest-disabled');
+      factoryBtn.disabled = isGuest;
+    }
+    var guestSignBtn = document.getElementById('guestSignInBtn');
+    var signOutBtn = document.getElementById('signOutBtn');
+    var accountHint = document.getElementById('accountHint');
+    if (isGuest) {
+      if (guestSignBtn) guestSignBtn.style.display = '';
+      if (signOutBtn) signOutBtn.style.display = 'none';
+      if (accountHint) accountHint.textContent = 'Guest mode — data stored locally, not synced';
+    } else {
+      if (guestSignBtn) guestSignBtn.style.display = 'none';
+      if (signOutBtn) signOutBtn.style.display = '';
+    }
+  }
+
+  var policyOverlay = document.getElementById('policyOverlay');
+  var policyDontAsk = document.getElementById('policyDontAsk');
+  var policyAgree = document.getElementById('policyAgree');
+  var policyDecline = document.getElementById('policyDecline');
+  var closePolicy = document.getElementById('closePolicy');
+
+  function closePolicyDialog() {
+    policyOverlay.classList.remove('open');
+    policyDontAsk.checked = false;
+  }
+  closePolicy.addEventListener('click', closePolicyDialog);
+  policyOverlay.addEventListener('click', function (e) { if (e.target === policyOverlay) closePolicyDialog(); });
+
+  function requestPolicyThen(intent) {
+    if (safeGetItem(KEY_POLICY_OK) === '1') {
+      performGoogleSignIn(intent);
+      return;
+    }
+    pendingIntent = intent;
+    policyDontAsk.checked = false;
+    policyOverlay.classList.add('open');
+  }
+
+  policyAgree.addEventListener('click', function () {
+    if (policyDontAsk.checked) safeSetItem(KEY_POLICY_OK, '1');
+    closePolicyDialog();
+    var intent = pendingIntent || 'signin';
+    pendingIntent = null;
+    performGoogleSignIn(intent);
+  });
+
+  policyDecline.addEventListener('click', function () {
+    if (policyDontAsk.checked) safeSetItem(KEY_POLICY_OK, '1');
+    closePolicyDialog();
+    window.open(GOOGLE_POLICY_URL, '_blank', 'noopener,noreferrer');
+    setWelcomeMsg('Opened Google policies. Sign in is paused.', 'warn');
+  });
+
+  async function performGoogleSignIn(intent) {
     if (!fbAuth) { setWelcomeMsg('Firebase failed to load.', 'err'); return; }
     btnSignIn.disabled = true;
     btnLogIn.disabled = true;
+    btnGuest.disabled = true;
     signInLabel.textContent = 'Signing in…';
     setWelcomeMsg('');
     try {
+      if (isGuest) exitGuestMode();
       var provider = new firebase.auth.GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
       var result = await fbAuth.signInWithPopup(provider);
@@ -2132,6 +2332,7 @@
     } finally {
       btnSignIn.disabled = false;
       btnLogIn.disabled = false;
+      btnGuest.disabled = false;
       signInLabel.textContent = 'Sign in with Google';
     }
   }
@@ -2171,8 +2372,19 @@
     }
   }
 
-  btnSignIn.addEventListener('click', function () { handleGoogleSignIn('signin'); });
-  btnLogIn.addEventListener('click', function () { handleGoogleSignIn('login'); });
+  btnSignIn.addEventListener('click', function () { requestPolicyThen('signin'); });
+  btnLogIn.addEventListener('click', function () { requestPolicyThen('login'); });
+  btnGuest.addEventListener('click', function () { enterGuestMode(); });
+
+  var guestSignInBtn = document.getElementById('guestSignInBtn');
+  if (guestSignInBtn) {
+    guestSignInBtn.addEventListener('click', function () {
+      exitGuestMode();
+      closeSettingsPanel();
+      showWelcome();
+      setWelcomeMsg('Sign in to sync your data across devices.', 'warn');
+    });
+  }
 
   var setupOverlay = document.getElementById('setupOverlay');
   var setupSteps = setupOverlay.querySelectorAll('.setup-step');
@@ -2371,6 +2583,7 @@
     resetLockState();
     vaultLockedSoft = false;
     refreshAllSettingsUI();
+    applyGuestGuards();
     switchView('anniversary');
     armIdle();
   });
@@ -2381,6 +2594,7 @@
 
   function armIdle() {
     if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; }
+    if (isGuest) return;
     if (!vaultCEK || !vaultPayload) return;
     if (!gate.classList.contains('hidden')) return;
     if (!setupOverlay.hidden) return;
@@ -2390,6 +2604,7 @@
   }
   function triggerLock() {
     idleTimer = null;
+    if (isGuest) return;
     var strict = getSettings().strictLock;
     vaultLockedSoft = !strict;
     settingsOverlay.classList.remove('open');
@@ -2410,6 +2625,7 @@
     var now = Date.now();
     if (now - lastActivityReset < 1000) return;
     lastActivityReset = now;
+    if (isGuest) return;
     if (!gate.classList.contains('hidden')) return;
     if (!setupOverlay.hidden) return;
     armIdle();
@@ -2419,6 +2635,7 @@
   });
 
   document.addEventListener('visibilitychange', function () {
+    if (isGuest) return;
     if (document.hidden) { hiddenAt = Date.now(); return; }
     if (!hiddenAt) return;
     var elapsed = Date.now() - hiddenAt;
@@ -2825,14 +3042,20 @@
     filterSettingsList('');
     showSettingsView('main');
     refreshAllSettingsUI();
+    applyGuestGuards();
   }
   function closeSettingsPanel() { settingsOverlay.classList.remove('open'); }
   settingsBtn.addEventListener('click', openSettings);
   closeSettings.addEventListener('click', closeSettingsPanel);
   settingsOverlay.addEventListener('click', function (e) { if (e.target === settingsOverlay) closeSettingsPanel(); });
+
   settingsList.addEventListener('click', function (e) {
     var btn = e.target.closest('.settings-item');
     if (!btn) return;
+    if (isGuest && btn.getAttribute('data-requires-auth') === '1') {
+      showToast('Sign in with Google for more features');
+      return;
+    }
     showSettingsView(btn.getAttribute('data-target'));
   });
   settingsOverlay.addEventListener('click', function (e) {
@@ -2847,7 +3070,7 @@
     biometric: 'face id touch id fingerprint biometric webauthn prf',
     data: 'export import backup json vault storage diagnostics',
     device: 'device info model os browser hardware screen cpu',
-    danger: 'reset erase delete factory developer simulate test mode sign out logout'
+    danger: 'reset erase delete factory developer simulate test mode sign out logout guest'
   };
   function filterSettingsList(q) {
     q = q.trim().toLowerCase();
@@ -2867,15 +3090,17 @@
     var rows = [];
     var lsOK = false;
     try { localStorage.setItem('__t','1'); lsOK = localStorage.getItem('__t') === '1'; localStorage.removeItem('__t'); } catch(e){}
-    rows.push(['Signed in', fbUser ? 'Yes' : 'No', !!fbUser]);
-    rows.push(['User ID', fbUser ? fbUser.uid.slice(0, 12) + '…' : '—', !!fbUser]);
+    rows.push(['Mode', isGuest ? 'Guest' : 'Signed in', true]);
+    if (!isGuest) {
+      rows.push(['User ID', fbUser ? fbUser.uid.slice(0, 12) + '…' : '—', !!fbUser]);
+    }
     rows.push(['Firestore connected', fbDb ? 'Yes' : 'No', !!fbDb]);
     rows.push(['Web Crypto', crypto && crypto.subtle ? 'Yes' : 'No', !!(crypto && crypto.subtle)]);
     rows.push(['Secure context', isSecureContextOK ? 'Yes' : 'No', isSecureContextOK]);
     rows.push(['Protocol', location.protocol || '?', location.protocol === 'https:']);
     rows.push(['Origin', location.origin || '(none)', !!location.origin && location.origin !== 'null']);
-    rows.push(['Local cache available', lsOK ? 'Yes' : 'No', lsOK]);
-    rows.push(['Last cloud save', lastFirestoreWriteOK ? 'OK' : 'Failed', lastFirestoreWriteOK]);
+    rows.push(['Local cache', lsOK ? 'Yes' : 'No', lsOK]);
+    if (!isGuest) rows.push(['Last cloud save', lastFirestoreWriteOK ? 'OK' : 'Failed', lastFirestoreWriteOK]);
     if (vaultRawMemory) {
       var size = JSON.stringify(vaultRawMemory).length;
       rows.push(['Vault size', Math.round(size / 1024) + ' KB', size > 0]);
@@ -2908,6 +3133,7 @@
 
   changeForm.addEventListener('submit', async function (e) {
     e.preventDefault();
+    if (isGuest) { changeMsg.textContent = 'Sign in to change your credential.'; changeMsg.className = 'form-msg err'; return; }
     var cur = curPass.value, nw = newPass.value, cf = cfmPass.value;
     var mode = getMode();
     if (mode === 'passcode') {
@@ -2922,12 +3148,10 @@
     try {
       var oldKek = await deriveKEK(cur, unb64(vaultRawMemory.kek.pass.salt), vaultRawMemory.kek.pass.iterations);
       var cek = await unwrapCEK(vaultRawMemory.kek.pass.wrappedCek, oldKek);
-
       var newSalt = randBytes(16);
       var newIters = DEFAULT_ITERATIONS;
       var newKek = await deriveKEK(nw, newSalt, newIters);
       var newWrapped = await wrapCEK(cek, newKek);
-
       vaultRawMemory.kek.pass = {
         salt: b64(newSalt),
         iterations: newIters,
@@ -2951,6 +3175,7 @@
   });
 
   revertBtn.addEventListener('click', function () {
+    if (isGuest) { changeMsg.textContent = 'Sign in to use revert.'; changeMsg.className = 'form-msg err'; return; }
     if (!vaultRawMemory || !vaultRawMemory.kek || !vaultRawMemory.kek.pass || !vaultRawMemory.kek.pass.prev) {
       changeMsg.textContent = 'Revert is not available.'; changeMsg.className = 'form-msg err';
       refreshRevertBox();
@@ -2979,6 +3204,7 @@
   }
 
   regenBackupBtn.addEventListener('click', async function () {
+    if (isGuest) { regenBackupMsg.textContent = 'Sign in to use backup codes.'; regenBackupMsg.className = 'form-msg err'; return; }
     if (!vaultCEK) return;
     var code = generateBackupCode();
     try {
@@ -3029,6 +3255,13 @@
 
   function refreshModeDisplay() {
     var mode = getMode();
+    if (isGuest) {
+      currentModeLabel.textContent = 'Guest mode — not encrypted';
+      switchModeBtn.textContent = 'Sign in for encryption';
+      ultraModeLabel.textContent = 'Not available';
+      ultraSwitchBtn.style.display = 'none';
+      return;
+    }
     if (mode === 'ultra') {
       currentModeLabel.textContent = 'Ultra Password (128+ chars)';
       switchModeBtn.textContent = 'Switch to Passcode Mode';
@@ -3069,6 +3302,7 @@
   }
 
   applyIterBtn.addEventListener('click', function () {
+    if (isGuest) { iterMsg.textContent = 'Sign in for encryption settings.'; iterMsg.className = 'form-msg err'; return; }
     iterCurField.style.display = '';
     iterCur.value = '';
     iterMsg.textContent = ''; iterMsg.className = 'form-msg';
@@ -3080,6 +3314,7 @@
     iterMsg.textContent = ''; iterMsg.className = 'form-msg';
   });
   iterApplySubmit.addEventListener('click', async function () {
+    if (isGuest) return;
     var newIter = parseInt(iterSelect.value, 10);
     var cur = iterCur.value;
     if (!cur) { iterMsg.textContent = 'Enter your current credential.'; iterMsg.className = 'form-msg err'; return; }
@@ -3108,6 +3343,7 @@
   });
 
   switchModeBtn.addEventListener('click', function () {
+    if (isGuest) { showToast('Sign in with Google for more features'); return; }
     var goingToPassword = getMode() !== 'password';
     if (getMode() === 'ultra') goingToPassword = false;
     switchCurLabel.textContent = isPasswordMode() ? 'Current Credential' : 'Current Passcode';
@@ -3142,6 +3378,7 @@
     setTimeout(function () { if (switchMsg.textContent.indexOf('Generated') === 0) { switchMsg.textContent = ''; switchMsg.className = 'form-msg'; } }, 4000);
   });
   switchSubmitBtn.addEventListener('click', async function () {
+    if (isGuest) return;
     var cur = switchCur.value, nw = switchNew.value, cf = switchCfm.value;
     var goingToPassword = getMode() !== 'password';
     if (goingToPassword) {
@@ -3173,6 +3410,7 @@
     } catch (err) { switchMsg.textContent = 'Current credential is incorrect.'; switchMsg.className = 'form-msg err'; }
   });
   ultraSwitchBtn.addEventListener('click', function () {
+    if (isGuest) { showToast('Sign in with Google for more features'); return; }
     ultraCurLabel.textContent = isPasswordMode() ? 'Current Credential' : 'Current Passcode';
     ultraCur.value = ''; ultraNew.value = ''; ultraCfm.value = '';
     ultraMsg.textContent = ''; ultraMsg.className = 'form-msg';
@@ -3190,6 +3428,7 @@
     setTimeout(function () { if (ultraMsg.textContent.indexOf('Generated') === 0) { ultraMsg.textContent = ''; ultraMsg.className = 'form-msg'; } }, 4000);
   });
   ultraSubmitBtn.addEventListener('click', async function () {
+    if (isGuest) return;
     var cur = ultraCur.value, nw = ultraNew.value, cf = ultraCfm.value;
     if (nw.length < MIN_ULTRA_LEN) { ultraMsg.textContent = 'Ultra password must be at least ' + MIN_ULTRA_LEN + ' characters.'; ultraMsg.className = 'form-msg err'; return; }
     if (nw !== cf) { ultraMsg.textContent = 'Passwords do not match.'; ultraMsg.className = 'form-msg err'; return; }
@@ -3222,7 +3461,10 @@
   idleSelect.addEventListener('change', function () { setSetting('idleMs', parseInt(idleSelect.value, 10)); armIdle(); });
   strictLockToggle.addEventListener('change', function () { setSetting('strictLock', strictLockToggle.checked); });
   visLockToggle.addEventListener('change', function () { setSetting('visibilityLock', visLockToggle.checked); });
-  lockNowBtn.addEventListener('click', function () { closeSettingsPanel(); triggerLock(); });
+  lockNowBtn.addEventListener('click', function () {
+    if (isGuest) { showToast('Lock requires a Google account'); return; }
+    closeSettingsPanel(); triggerLock();
+  });
 
   var bioStatusLabel = document.getElementById('bioStatusLabel');
   var bioSettingsHint = document.getElementById('bioSettingsHint');
@@ -3236,6 +3478,16 @@
     var configured = hasBioCred();
     var cred = getBioCred();
     var prfMode = cred && cred.mode === 'prf';
+    if (isGuest) {
+      bioStatusLabel.textContent = 'Guest';
+      bioSettingsHint.textContent = 'Biometric unlock requires a Google account.';
+      bioSettingsHint.classList.add('warn');
+      bioSetupBtn.disabled = true;
+      bioSetupBtn.textContent = 'Sign in required';
+      bioRemoveBtn.style.display = 'none';
+      bioSettingsTestBadge.style.display = 'none';
+      return;
+    }
     if (isTestMode()) {
       bioStatusLabel.textContent = 'Test Mode';
       bioSettingsHint.textContent = 'Biometric is disabled while simulating a device.';
@@ -3276,6 +3528,7 @@
     }
   }
   bioSetupBtn.addEventListener('click', async function () {
+    if (isGuest) { showToast('Sign in with Google for more features'); return; }
     var block = getBioBlockReason();
     if (block.blocked) { bioMsg.textContent = block.reason; bioMsg.className = 'form-msg err'; return; }
     if (!vaultCEK) { bioMsg.textContent = 'Unlock first, then set up biometric.'; bioMsg.className = 'form-msg err'; return; }
@@ -3326,11 +3579,12 @@
   forgetExportPrefBtn.addEventListener('click', function () {
     safeRemoveItem(KEY_EXPORT_PREF);
     safeRemoveItem(KEY_EXTERNAL_OK);
+    safeRemoveItem(KEY_POLICY_OK);
     refreshExportPrefUI();
     showDataMsg('Preferences cleared.', 'ok');
   });
   function buildExportPayload(includeMeta) {
-    var data = { app: 'Pura Anniversary', version: 15, exportedAt: new Date().toISOString(), notes: getNotes(), capsules: getCapsules() };
+    var data = { app: 'Pura Anniversary', version: 16, exportedAt: new Date().toISOString(), notes: getNotes(), capsules: getCapsules() };
     if (includeMeta) data.passwordMode = getMode();
     return data;
   }
@@ -3440,6 +3694,14 @@
       try {
         var data = JSON.parse(ev.target.result);
         if (!data || typeof data !== 'object') throw new Error('bad');
+        if (isGuest) {
+          if (data.notes) vaultPayload.notes = data.notes;
+          if (data.capsules) vaultPayload.capsules = data.capsules;
+          await saveVault();
+          showDataMsg('Imported to guest vault. Reloading…', 'ok');
+          setTimeout(function () { location.reload(); }, 900);
+          return;
+        }
         if (data.v === VAULT_VERSION && data.kek && data.enc) {
           saveVaultRaw(data);
           showDataMsg('Vault imported. Reloading…', 'ok');
@@ -3544,12 +3806,12 @@
     rows.push(['Touch Support', ('ontouchstart' in window) ? 'Yes' : 'No']);
     rows.push(['Connection', navigator.onLine ? 'Online' : 'Offline']);
     rows.push(['Secure Context', isSecureContextOK ? 'Yes' : 'No']);
-    rows.push(['Encryption', 'AES-GCM 256 (envelope)']);
-    rows.push(['Cloud', 'Firebase Firestore']);
+    rows.push(['Encryption', isGuest ? 'None (guest)' : 'AES-GCM 256 (envelope)']);
+    rows.push(['Cloud', isGuest ? 'Local only' : 'Firebase Firestore']);
     var bioCred = getBioCred();
-    var bioStatus = isTestMode() ? 'Disabled (Test Mode)' :
+    var bioStatus = isGuest ? 'Sign in required' : (isTestMode() ? 'Disabled (Test Mode)' :
       (bioCred ? (bioCred.mode === 'prf' ? 'Cryptographic (PRF)' : 'Convenience') :
-      (webAuthnSupported && !getBioBlockReason().blocked ? 'Available' : 'Unavailable'));
+      (webAuthnSupported && !getBioBlockReason().blocked ? 'Available' : 'Unavailable')));
     rows.push(['Biometric', bioStatus]);
     if (simulatedDevice) rows.push(['Simulation', 'Active — ' + simulatedDevice]);
     else if (isHuaweiReal) rows.push(['Vendor Note', 'Huawei / Honor detected']);
@@ -3674,6 +3936,16 @@
   });
 
   factoryResetBtn.addEventListener('click', async function () {
+    if (isGuest) {
+      var okg = window.confirm('Guest mode has no cloud vault. This will only clear local guest data. Continue?');
+      if (!okg) return;
+      safeRemoveItem(KEY_GUEST_VAULT);
+      vaultRawMemory = null;
+      vaultPayload = null;
+      resetMsg.textContent = 'Guest data cleared. Reloading…'; resetMsg.className = 'form-msg ok';
+      setTimeout(function () { location.reload(); }, 900);
+      return;
+    }
     var ok = window.confirm('Factory Reset will permanently erase your encrypted vault from the cloud, backup code, biometric enrollment, and all lock state.\n\nThis cannot be undone. Continue?');
     if (!ok) return;
     var ok2 = window.confirm('Last chance. Export a backup first if you want to keep anything.\n\nTap OK to erase everything.');
@@ -3682,9 +3954,7 @@
       if (fbUser && fbDb) {
         await fbDb.collection('users').doc(fbUser.uid).delete();
       }
-    } catch (e) {
-      console.error('Delete failed:', e);
-    }
+    } catch (e) { console.error('Delete failed:', e); }
     [KEY_BIO_CRED, KEY_LOCK_STATE, KEY_EXPORT_PREF, KEY_EXTERNAL_OK].forEach(function (k) { safeRemoveItem(k); });
     vaultRawMemory = null;
     vaultCEK = null;
@@ -3700,6 +3970,7 @@
     refreshBioSettings();
     renderDeviceInfo();
     renderStorageDiag();
+    applyGuestGuards();
     if (fbUser && accountHint) accountHint.textContent = 'Signed in as ' + (fbUser.email || fbUser.uid);
     var s = getSettings();
     idleSelect.value = String(s.idleMs || 0);
@@ -3722,6 +3993,7 @@
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'Escape') return;
     if (!setupOverlay.hidden) return;
+    if (policyOverlay.classList.contains('open')) { closePolicyDialog(); return; }
     if (importOldOverlay.classList.contains('open')) { closeImportOldDialog(); return; }
     if (externalOverlay.classList.contains('open')) { closeExternalDialog(); return; }
     if (devOverlay.classList.contains('open')) closeDev();
@@ -3745,6 +4017,7 @@
     showWelcome();
     fbAuth.onAuthStateChanged(async function (user) {
       if (!user) {
+        if (isGuest) return;
         fbUser = null;
         vaultRawMemory = null;
         vaultCEK = null;
@@ -3752,6 +4025,7 @@
         showWelcome();
         return;
       }
+      if (isGuest) exitGuestMode();
       fbUser = user;
       setWelcomeMsg('Loading your vault…', 'warn');
       var raw = await loadVaultFromFirestore(user.uid);
