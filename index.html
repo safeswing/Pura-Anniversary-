@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://www.google.com; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.googleusercontent.com https://*.googleapis.com; font-src 'self' data:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com wss://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://www.googleapis.com https://apis.google.com; base-uri 'self'; form-action 'self'; object-src 'none'; frame-src https://pura-anniversary.firebaseapp.com https://accounts.google.com https://*.firebaseapp.com https://www.google.com">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#050507">
 <title>Pura Anniversary</title>
@@ -178,7 +178,7 @@
     -webkit-backdrop-filter:blur(22px) saturate(120%); backdrop-filter:blur(22px) saturate(120%);
     transition:opacity .35s ease, visibility .35s ease; overflow-y:auto; }
   .setup-overlay{ z-index:105; }
-  .gate.hidden, .setup-overlay.hidden{ opacity:0; visibility:hidden; pointer-events:none; }
+  .gate.hidden, .setup-overlay.hidden{ opacity:0; visibility:hidden; pointer-events:none; display:none; }
   .gate-card, .setup-card{ width:min(400px,100%); padding:26px 22px 24px; border-radius:24px;
     border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.05);
     box-shadow:inset 0 1px 0 rgba(255,255,255,.2), 0 30px 70px -20px rgba(0,0,0,.95);
@@ -399,6 +399,8 @@
   .device-row:last-child{ border-bottom:0; }
   .device-key{ font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:rgba(244,244,246,.45); flex:none; }
   .device-val{ font-size:12.5px; color:#fff; text-align:right; word-break:break-word; font-variant-numeric:tabular-nums; }
+  .device-val.ok{ color:#8ef0b5; }
+  .device-val.err{ color:#ff8a8a; }
   .sheet{ width:min(560px,100%); max-height:calc(100dvh - 40px); display:flex; flex-direction:column;
     padding:8px 20px calc(22px + env(safe-area-inset-bottom,0px)); border-radius:22px 22px 0 0;
     border:1px solid rgba(255,255,255,.14); border-bottom:0; background:rgba(20,20,24,.88);
@@ -465,13 +467,6 @@
   .export-actions{ display:flex; gap:10px; margin-top:18px; }
   .export-actions .btn{ margin-top:0; }
   #lazySentinel{ height:1px; flex:0 0 auto; }
-  .diag-row{ display:flex; justify-content:space-between; gap:12px; padding:8px 0; font-size:12px;
-    border-bottom:1px solid rgba(255,255,255,.05); }
-  .diag-row:last-child{ border-bottom:0; }
-  .diag-key{ color:rgba(244,244,246,.5); }
-  .diag-val{ color:#fff; font-family:ui-monospace, monospace; font-size:11.5px; text-align:right; word-break:break-all; }
-  .diag-val.ok{ color:#8ef0b5; }
-  .diag-val.err{ color:#ff8a8a; }
   @media (max-width:520px){
     .app{ padding:10px; }
     .panel{ height:calc(100vh - 20px); height:calc(100dvh - 20px); border-radius:22px; padding:18px 14px 10px; }
@@ -509,7 +504,29 @@
   <div class="backdrop" aria-hidden="true"></div>
   <div class="snow" id="snow" aria-hidden="true"></div>
 
-  <div class="gate" id="gate" role="dialog" aria-modal="true" aria-label="Authentication required">
+  <!-- ============ WELCOME / SIGN-IN OVERLAY ============ -->
+  <div class="gate" id="welcomeOverlay" role="dialog" aria-modal="true" aria-label="Sign in">
+    <div class="gate-card">
+      <h2 class="gate-title">Pura Anniversary</h2>
+      <p class="gate-sub">Sign in to continue</p>
+      <div style="display:flex;flex-direction:column;gap:12px;margin-top:8px;">
+        <button class="btn" id="btnSignIn" type="button" style="display:flex;align-items:center;justify-content:center;gap:10px;">
+          <svg width="18" height="18" viewBox="0 0 48 48" style="flex:none;">
+            <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.2-.1-2.3-.4-3.5z"/>
+            <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 18.9 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/>
+            <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.3 0-9.7-3.3-11.3-8L6.3 32.8C9.7 39.3 16.3 44 24 44z"/>
+            <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4-4.1 5.6l6.2 5.2C41 35.4 44 30.2 44 24c0-1.2-.1-2.3-.4-3.5z"/>
+          </svg>
+          <span id="signInLabel">Sign in with Google</span>
+        </button>
+        <button class="btn ghost" id="btnLogIn" type="button">Log in</button>
+        <p class="form-msg" id="welcomeMsg"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ PASSCODE GATE ============ -->
+  <div class="gate hidden" id="gate" role="dialog" aria-modal="true" aria-label="Authentication required" style="display:none;">
     <div class="gate-card">
       <h2 class="gate-title" id="gateTitle">Enter Passcode</h2>
       <p class="gate-sub" id="gateSub">6 digits required</p>
@@ -593,6 +610,7 @@
     </div>
   </div>
 
+  <!-- ============ SETUP WIZARD ============ -->
   <div class="setup-overlay" id="setupOverlay" role="dialog" aria-modal="true" hidden>
     <div class="setup-card">
       <div class="setup-step" data-step="choose">
@@ -665,6 +683,7 @@
     </div>
   </div>
 
+  <!-- ============ MAIN APP ============ -->
   <main class="app" id="app">
     <section class="panel">
       <button class="settings-btn" id="settingsBtn" type="button" aria-label="Settings">
@@ -703,6 +722,7 @@
     </section>
   </main>
 
+  <!-- ============ SETTINGS ============ -->
   <div class="settings-overlay" id="settingsOverlay" role="dialog" aria-modal="true">
     <div class="settings-card">
       <div class="sv" data-sv="main">
@@ -749,7 +769,7 @@
           </button>
           <button class="settings-item danger" data-target="danger" type="button">
             <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12" y2="17"></line></svg></span>
-            <span class="lbl"><b>Danger Zone</b><span>Developer mode, factory reset</span></span>
+            <span class="lbl"><b>Danger Zone</b><span>Sign out, developer mode, reset</span></span>
             <span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg></span>
           </button>
         </div>
@@ -998,10 +1018,10 @@
           <p class="form-msg" id="dataMsg"></p>
           <div class="divider"></div>
           <p class="sec-title">Encrypted Vault Backup</p>
-          <p class="mode-hint">Download the raw encrypted vault blob. Faithful and secure, but requires the same credential to restore.</p>
+          <p class="mode-hint">Download the raw encrypted vault blob. Requires the same credential to restore.</p>
           <button class="btn ghost" id="exportVaultBtn" type="button">Export Encrypted Vault</button>
           <div class="divider"></div>
-          <p class="sec-title">Storage Diagnostics</p>
+          <p class="sec-title">Diagnostics</p>
           <div class="device-info" id="storageDiag">
             <div class="device-row"><span class="device-key">Loading…</span><span class="device-val">—</span></div>
           </div>
@@ -1037,12 +1057,16 @@
           <h2>Danger Zone</h2>
         </div>
         <div class="subbody">
+          <p class="sec-title">Account</p>
+          <p class="mode-hint" id="accountHint">Signed in</p>
+          <button class="btn ghost" id="signOutBtn" type="button" style="margin-bottom:8px;">Sign out of Google</button>
+          <div class="divider"></div>
           <p class="sec-title">Developer Mode</p>
           <p class="mode-hint">Simulate other devices for testing layouts and behaviors.</p>
           <button class="btn ghost" id="openDevBtn" type="button">Open Developer Mode</button>
           <div class="divider"></div>
           <p class="sec-title">Factory Reset</p>
-          <p class="mode-hint">Erases your encrypted vault, backup code, biometric enrollment, and all lock state. This cannot be undone.</p>
+          <p class="mode-hint">Erases your encrypted vault from Firestore, backup code, biometric enrollment, and all lock state. This cannot be undone.</p>
           <button class="btn danger" id="factoryResetBtn" type="button">Factory Reset</button>
           <p class="form-msg" id="resetMsg"></p>
         </div>
@@ -1050,6 +1074,7 @@
     </div>
   </div>
 
+  <!-- ============ DEV / EXTERNAL / IMPORT OVERLAYS ============ -->
   <div class="export-overlay" id="devOverlay" role="dialog" aria-modal="true">
     <div class="export-card">
       <div id="devLockedView">
@@ -1142,6 +1167,7 @@
     </div>
   </div>
 
+  <!-- ============ SHEETS ============ -->
   <div class="sheet-overlay" id="menuOverlay" role="dialog" aria-modal="true">
     <div class="sheet">
       <div class="sheet-handle"></div>
@@ -1264,6 +1290,11 @@
     </div>
   </div>
 
+  <!-- Firebase SDK (compat builds expose a global `firebase` object) -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+
 <script>
 (function () {
   'use strict';
@@ -1275,7 +1306,27 @@
     throw new Error('Framed');
   }
 
-  var KEY_VAULT = 'pura_vault';
+  /* ============ FIREBASE INIT ============ */
+  var firebaseConfig = {
+    apiKey: "AIzaSyBRN9M2GY5LubEttduDX9EmjxRgT-S86kY",
+    authDomain: "pura-anniversary.firebaseapp.com",
+    projectId: "pura-anniversary",
+    storageBucket: "pura-anniversary.firebasestorage.app",
+    messagingSenderId: "673306264357",
+    appId: "1:673306264357:web:1586bc4e9a90e83f9d90cc"
+  };
+  var fbApp = null, fbAuth = null, fbDb = null, fbUser = null;
+  try {
+    if (typeof firebase !== 'undefined' && firebase.initializeApp) {
+      fbApp = firebase.initializeApp(firebaseConfig);
+      fbAuth = firebase.auth();
+      fbDb = firebase.firestore();
+    }
+  } catch (e) {
+    console.error('Firebase init failed:', e);
+  }
+
+  /* ============ CONSTANTS ============ */
   var KEY_BIO_CRED = 'pura_bio_cred';
   var KEY_LOCK_STATE = 'pura_lock_state';
   var KEY_EXPORT_PREF = 'pura_export_pref';
@@ -1293,26 +1344,15 @@
   var LAZY_BATCH = 60;
   var MAGIC = 'dHVya21lbmlzdGFuMjAyNg==';
 
-  /* =========================================================
-     STORAGE ENGINE — verified writes and visible errors
-     ========================================================= */
-  var storageStatus = {
-    available: false,
-    writable: false,
-    cryptoOK: false,
-    lastError: '',
-    lastErrorAt: 0
-  };
-
+  /* ============ STORAGE BANNER ============ */
   var storageBanner = document.getElementById('storageBanner');
   var storageBannerTitle = document.getElementById('storageBannerTitle');
   var storageBannerText = document.getElementById('storageBannerText');
   var storageBannerDismiss = document.getElementById('storageBannerDismiss');
   var bannerDismissed = false;
+  var lastFirestoreWriteOK = true;
 
   function showStorageError(title, text) {
-    storageStatus.lastError = text;
-    storageStatus.lastErrorAt = Date.now();
     if (bannerDismissed) return;
     storageBannerTitle.textContent = title;
     storageBannerText.textContent = text;
@@ -1323,122 +1363,23 @@
     storageBanner.classList.remove('show');
   });
 
-  // Diagnostic check — safe to call repeatedly.
-  function runStorageDiagnostic() {
-    var result = {
-      localStorageSupported: false,
-      localStorageWritable: false,
-      localStorageVerified: false,
-      cryptoSupported: false,
-      cryptoSubtleSupported: false,
-      isSecureContext: false,
-      origin: location.origin || '(none)',
-      protocol: location.protocol,
-      storageEstimateKB: null,
-      existingVaultSize: 0,
-      error: ''
-    };
-    try {
-      result.isSecureContext = window.isSecureContext === true;
-    } catch (e) {}
-    try {
-      result.cryptoSupported = typeof crypto !== 'undefined';
-      result.cryptoSubtleSupported = result.cryptoSupported && typeof crypto.subtle !== 'undefined';
-    } catch (e) {}
-
-    // Test localStorage with a real write/read/delete cycle
-    var testKey = '__pura_diag_' + Date.now() + '_' + Math.random().toString(36).slice(2);
-    var testVal = 'v' + Math.random().toString(36).slice(2);
-    try {
-      if (typeof localStorage === 'undefined') throw new Error('localStorage undefined');
-      result.localStorageSupported = true;
-      localStorage.setItem(testKey, testVal);
-      var readBack = localStorage.getItem(testKey);
-      result.localStorageWritable = true;
-      result.localStorageVerified = (readBack === testVal);
-      localStorage.removeItem(testKey);
-      // Verify it's really gone
-      if (localStorage.getItem(testKey) !== null) {
-        result.error = 'Remove did not clear test key';
-      }
-    } catch (e) {
-      result.error = (e && e.message) ? e.message : String(e);
-      // Clean up if possible
-      try { localStorage.removeItem(testKey); } catch (_) {}
-    }
-
-    // Check existing vault size
-    try {
-      var existing = localStorage.getItem(KEY_VAULT);
-      if (existing) result.existingVaultSize = existing.length;
-    } catch (e) {}
-
-    return result;
-  }
-
-  // Update top-level storage status
-  (function initialStorageCheck() {
-    var diag = runStorageDiagnostic();
-    storageStatus.available = diag.localStorageSupported;
-    storageStatus.writable = diag.localStorageVerified;
-    storageStatus.cryptoOK = diag.cryptoSubtleSupported;
-
-    if (!diag.cryptoSubtleSupported) {
-      showStorageError(
-        'Crypto unavailable',
-        'This browser does not expose the Web Crypto API. The app requires HTTPS or localhost and a modern browser. Encryption cannot run.'
-      );
-      return;
-    }
-    if (!diag.localStorageSupported) {
-      showStorageError(
-        'Browser storage unavailable',
-        'localStorage is not available in this context. Your vault cannot be saved. Try a normal browser tab (not private mode, not an embedded preview).'
-      );
-      return;
-    }
-    if (!diag.localStorageWritable || !diag.localStorageVerified) {
-      showStorageError(
-        'Browser storage is not saving',
-        'Writes to localStorage are not persisting. Your vault would be lost on reload. ' + (diag.error ? 'Reason: ' + diag.error : 'Try exiting private/incognito mode.'));
-      return;
-    }
-  })();
-
-  // Safe storage helpers — every write is verified by reading back.
+  /* ============ SAFE LOCAL STORAGE (for non-vault keys only) ============ */
   function safeGetItem(key) {
     try { return localStorage.getItem(key); }
-    catch (e) {
-      showStorageError('Read failed', 'Could not read from browser storage: ' + (e.message || e));
-      return null;
-    }
+    catch (e) { return null; }
   }
   function safeSetItem(key, value) {
     try {
       localStorage.setItem(key, value);
-      var back = localStorage.getItem(key);
-      if (back !== value) {
-        showStorageError('Save verification failed', 'Wrote to browser storage but the value did not persist. The vault may not survive a reload. ' + (key === KEY_VAULT ? 'This is critical — export your data immediately.' : ''));
-        return false;
-      }
-      return true;
-    } catch (e) {
-      var msg = e && e.message ? e.message : String(e);
-      var title = 'Storage write failed';
-      if (msg.toLowerCase().indexOf('quota') !== -1) {
-        title = 'Storage quota exceeded';
-      } else if (msg.toLowerCase().indexOf('security') !== -1 || msg.toLowerCase().indexOf('blocked') !== -1) {
-        title = 'Storage blocked by browser';
-      }
-      showStorageError(title, 'Could not write to browser storage: ' + msg + '. Your data will NOT be saved. ' + (key === KEY_VAULT ? 'Export immediately.' : ''));
-      return false;
-    }
+      return localStorage.getItem(key) === value;
+    } catch (e) { return false; }
   }
   function safeRemoveItem(key) {
     try { localStorage.removeItem(key); return true; }
     catch (e) { return false; }
   }
 
+  /* ============ CRYPTO ============ */
   function b64(u8) {
     var s = '';
     for (var i = 0; i < u8.length; i++) s += String.fromCharCode(u8[i]);
@@ -1548,41 +1489,78 @@
     return weak.indexOf(code) !== -1;
   }
 
+  /* ============ VAULT STATE (in memory) ============ */
   var vaultCEK = null;
   var vaultPayload = null;
-  var vaultRaw = null;
+  var vaultRawMemory = null;
   var vaultLockedSoft = false;
   var simulatedDevice = null;
   var recoveryMode = false;
   var currentMode = 'passcode';
 
+  var firestoreWriteQueue = Promise.resolve();
+  var lastFirestoreWriteOK = true;
+
   function loadVaultRaw() {
-    var raw = safeGetItem(KEY_VAULT);
-    if (!raw) return null;
-    try { return JSON.parse(raw); } catch (e) { return null; }
+    return vaultRawMemory;
   }
+
   function saveVaultRaw(obj) {
-    var str;
-    try { str = JSON.stringify(obj); }
-    catch (e) {
-      showStorageError('Serialization failed', 'Could not prepare vault for saving: ' + (e.message || e));
+    try {
+      vaultRawMemory = JSON.parse(JSON.stringify(obj));
+    } catch (e) {
+      showStorageError('Serialization failed', 'Could not prepare vault: ' + (e.message || e));
       return false;
     }
-    return safeSetItem(KEY_VAULT, str);
+    queueFirestoreWrite();
+    return true;
+  }
+
+  function queueFirestoreWrite() {
+    if (!fbUser || !fbDb || !vaultRawMemory) return;
+    var payload = JSON.stringify(vaultRawMemory);
+    firestoreWriteQueue = firestoreWriteQueue.then(function () {
+      return fbDb.collection('users').doc(fbUser.uid).set({
+        vault: payload,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+    }).then(function () {
+      lastFirestoreWriteOK = true;
+    }).catch(function (err) {
+      lastFirestoreWriteOK = false;
+      console.error('Firestore write failed:', err);
+      showStorageError('Cloud save failed', 'Could not save to Firestore: ' + (err.message || err));
+    });
+  }
+
+  async function loadVaultFromFirestore(uid) {
+    try {
+      var doc = await fbDb.collection('users').doc(uid).get();
+      if (!doc.exists) return null;
+      var data = doc.data();
+      if (!data || typeof data.vault !== 'string') return null;
+      return JSON.parse(data.vault);
+    } catch (e) {
+      console.error('Firestore read failed:', e);
+      return null;
+    }
+  }
+
+  async function waitForCloudSync() {
+    try { await firestoreWriteQueue; } catch (e) {}
+    return lastFirestoreWriteOK;
   }
 
   var saveChain = Promise.resolve();
   function saveVault() {
-    if (!vaultCEK || !vaultPayload || !vaultRaw) return Promise.resolve(false);
+    if (!vaultCEK || !vaultPayload || !vaultRawMemory) return Promise.resolve(false);
     var snap = JSON.parse(JSON.stringify(vaultPayload));
-    var rawSnap = JSON.parse(JSON.stringify(vaultRaw));
+    var rawSnap = JSON.parse(JSON.stringify(vaultRawMemory));
     var cek = vaultCEK;
     saveChain = saveChain.then(function () {
       return encryptWithCEK(cek, snap).then(function (enc) {
         rawSnap.enc = enc;
-        var ok = saveVaultRaw(rawSnap);
-        if (!ok) throw new Error('Vault save failed');
-        return true;
+        return saveVaultRaw(rawSnap);
       });
     }).catch(function (e) {
       console.error('Vault save failed:', e);
@@ -1591,6 +1569,7 @@
     return saveChain;
   }
 
+  /* ============ LOCK STATE ============ */
   function getLockState() {
     try { return JSON.parse(safeGetItem(KEY_LOCK_STATE)) || { failed: 0, level: 0, until: 0, perm: false }; }
     catch (e) { return { failed: 0, level: 0, until: 0, perm: false }; }
@@ -1606,6 +1585,7 @@
     return dur;
   }
 
+  /* ============ PAYLOAD ACCESSORS ============ */
   function getMode() { return currentMode || 'passcode'; }
   function isPasswordMode() { return getMode() !== 'passcode'; }
   function getNotes() { return vaultPayload && vaultPayload.notes ? vaultPayload.notes : {}; }
@@ -1626,13 +1606,12 @@
     saveVault();
   }
   function getRevertInfo() {
-    var raw = loadVaultRaw();
-    if (!raw || !raw.kek || !raw.kek.pass || !raw.kek.pass.prev) return null;
-    var p = raw.kek.pass.prev;
+    if (!vaultRawMemory || !vaultRawMemory.kek || !vaultRawMemory.kek.pass || !vaultRawMemory.kek.pass.prev) return null;
+    var p = vaultRawMemory.kek.pass.prev;
     var remaining = REVERT_WINDOW_MS - (Date.now() - p.time);
     if (remaining <= 0) {
-      delete raw.kek.pass.prev;
-      saveVaultRaw(raw);
+      delete vaultRawMemory.kek.pass.prev;
+      queueFirestoreWrite();
       return null;
     }
     return { remaining: remaining };
@@ -1642,6 +1621,7 @@
     return Math.floor(m / 60) + 'h ' + (m % 60) + 'm';
   }
 
+  /* ============ DEVICE DETECTION ============ */
   var ua = navigator.userAgent || '';
   var uaLower = ua.toLowerCase();
   var isIOSReal = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -1767,6 +1747,7 @@
     }
   }
 
+  /* ============ SNOW ============ */
   var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   (function buildSnow() {
     if (reduceMotion) return;
@@ -1789,7 +1770,7 @@
     snowEl.appendChild(frag);
   })();
 
-  // PW tools delegated
+  /* ============ PW TOOLS ============ */
   document.addEventListener('click', function (e) {
     var toggle = e.target.closest('[data-pw-toggle]');
     if (toggle) {
@@ -1827,6 +1808,13 @@
     }
   });
 
+  /* ============ DOM REFS ============ */
+  var welcomeOverlay = document.getElementById('welcomeOverlay');
+  var btnSignIn = document.getElementById('btnSignIn');
+  var btnLogIn = document.getElementById('btnLogIn');
+  var welcomeMsg = document.getElementById('welcomeMsg');
+  var signInLabel = document.getElementById('signInLabel');
+
   var gate = document.getElementById('gate');
   var gateTitle = document.getElementById('gateTitle');
   var gateSub = document.getElementById('gateSub');
@@ -1859,7 +1847,6 @@
 
   var entered = '';
   var verifying = false;
-  var gateMode = 'initial';
   var lockTicker = null;
 
   function renderDots() {
@@ -1872,6 +1859,7 @@
   }
   function setGateMsg(text, kind) { gateMsg.textContent = text || ''; gateMsg.className = 'gate-msg' + (kind ? ' ' + kind : ''); }
   function setGateSub(text, kind) { gateSub.textContent = text; gateSub.className = 'gate-sub' + (kind ? ' ' + kind : ''); }
+  function setWelcomeMsg(text, kind) { welcomeMsg.textContent = text || ''; welcomeMsg.className = 'form-msg' + (kind ? ' ' + kind : ''); }
 
   function unlockUI() {
     entered = '';
@@ -1927,15 +1915,13 @@
     gateLocked.style.display = 'none';
     verifying = false;
     recoveryMode = false;
-    if (gateMode === 'migration') { gateTitle.textContent = 'Security Upgrade'; setGateSub('Enter your current passcode'); }
-    else if (gateMode === 'soft-return') { gateTitle.textContent = 'Locked'; setGateSub('Enter credential to continue'); }
-    else if (isTestMode()) { gateTitle.textContent = 'Developer Mode'; setGateSub('Simulating: ' + simulatedDevice, 'warn'); }
+    if (isTestMode()) { gateTitle.textContent = 'Developer Mode'; setGateSub('Simulating: ' + simulatedDevice, 'warn'); }
     else {
       if (mode === 'ultra') { gateTitle.textContent = 'Enter Ultra Password'; setGateSub(MIN_ULTRA_LEN + '+ characters required'); }
       else if (mode === 'password') { gateTitle.textContent = 'Enter Password'; setGateSub(MIN_PASSWORD_LEN + '+ characters required'); }
       else { gateTitle.textContent = 'Enter Passcode'; setGateSub('6 digits required'); }
     }
-    if (mode === 'passcode' || gateMode === 'migration') {
+    if (mode === 'passcode') {
       keypad.style.display = ''; dotsEl.style.display = ''; passwordWrap.style.display = 'none';
     } else {
       keypad.style.display = 'none'; dotsEl.style.display = 'none'; passwordWrap.style.display = '';
@@ -1981,7 +1967,7 @@
     gateLocked.style.display = '';
     lockIcon.classList.remove('warn');
     lockTitle.textContent = 'Permanently Locked';
-    lockMsg.textContent = 'This device has been permanently locked after repeated incorrect attempts. You can still export your data below.';
+    lockMsg.textContent = 'This device has been permanently locked after repeated incorrect attempts.';
     lockTimer.style.display = 'none';
     if (lockTicker) { clearInterval(lockTicker); lockTicker = null; }
   }
@@ -2007,60 +1993,17 @@
     if (verifying) return;
     verifying = true;
     setGateMsg('Verifying…', 'warn');
-
-    if (gateMode === 'migration') {
-      var legacyPass = safeGetItem('pura_passcode');
-      if (!legacyPass) {
-        verifying = false;
-        setGateMsg('Legacy data missing.', 'err');
-        return;
-      }
-      if (enteredValue !== legacyPass) {
-        verifying = false; setGateMsg(''); entered = ''; renderDots();
-        shakeDots(); setGateMsg('Incorrect. Try again.', 'err');
-        return;
-      }
-      try {
-        await doMigration(enteredValue);
-        verifying = false; onCorrect();
-      } catch (e) {
-        verifying = false;
-        setGateMsg('Migration failed.', 'err');
-      }
-      return;
-    }
-
     try {
-      var raw2 = loadVaultRaw();
-      if (!raw2) throw new Error('no vault');
-      var kek2 = await deriveKEK(enteredValue, unb64(raw2.kek.pass.salt), raw2.kek.pass.iterations);
-      var cek = await unwrapCEK(raw2.kek.pass.wrappedCek, kek2);
-      var payload = await decryptWithCEK(cek, raw2.enc);
-
+      if (!vaultRawMemory || !vaultRawMemory.kek || !vaultRawMemory.kek.pass) throw new Error('no vault');
+      var kek = await deriveKEK(enteredValue, unb64(vaultRawMemory.kek.pass.salt), vaultRawMemory.kek.pass.iterations);
+      var cek = await unwrapCEK(vaultRawMemory.kek.pass.wrappedCek, kek);
+      var payload = await decryptWithCEK(cek, vaultRawMemory.enc);
       if (!payload.integrity || payload.integrity.app !== 'Pura Anniversary') throw new Error('integrity');
-      var sch = payload.integrity.schema;
-      if (sch !== VAULT_VERSION && sch !== 2 && sch !== 1) throw new Error('schema');
-
       vaultCEK = cek;
       vaultPayload = payload;
-      vaultRaw = raw2;
       currentMode = payload.mode || 'passcode';
       vaultLockedSoft = false;
       verifying = false;
-
-      if (!payload.setupComplete && payload.integrity && payload.integrity.app === 'Pura Anniversary') {
-        payload.setupComplete = true;
-        payload.integrity.schema = VAULT_VERSION;
-        await saveVault();
-        onCorrect();
-        return;
-      }
-      if (!payload.setupComplete) {
-        gate.classList.add('hidden');
-        setTimeout(function () { gate.style.display = 'none'; }, 400);
-        openSetupWizard();
-        return;
-      }
       onCorrect();
     } catch (e) {
       verifying = false; entered = ''; renderDots();
@@ -2093,7 +2036,7 @@
     if (recoveryMode) return;
     var s = getLockState();
     if (s.perm || s.until > Date.now()) return;
-    if (getMode() !== 'passcode' && gateMode !== 'migration') return;
+    if (getMode() !== 'passcode') return;
     if (e.key >= '0' && e.key <= '9' && entered.length < MIN_PASSCODE_LEN) {
       entered += e.key; renderDots();
       if (entered.length === MIN_PASSCODE_LEN) setTimeout(function () { tryUnlock(entered); }, 150);
@@ -2107,12 +2050,10 @@
     try {
       var cek = await unlockWithBiometric();
       if (!cek) throw new Error('no cek');
-      var raw = loadVaultRaw();
-      var payload = await decryptWithCEK(cek, raw.enc);
+      var payload = await decryptWithCEK(cek, vaultRawMemory.enc);
       if (!payload.integrity || payload.integrity.app !== 'Pura Anniversary') throw new Error('integrity');
       vaultCEK = cek;
       vaultPayload = payload;
-      vaultRaw = raw;
       currentMode = payload.mode || 'passcode';
       vaultLockedSoft = false;
       setGateMsg('Verified.', 'ok');
@@ -2150,18 +2091,16 @@
     if (verifying) return;
     var code = normalizeBackupCode(recoveryInput.value);
     if (code.length < 20) { setGateMsg('Invalid backup code format.', 'err'); return; }
-    var raw = loadVaultRaw();
-    if (!raw || !raw.kek || !raw.kek.backup) { setGateMsg('No backup code is registered.', 'err'); return; }
+    if (!vaultRawMemory || !vaultRawMemory.kek || !vaultRawMemory.kek.backup) { setGateMsg('No backup code is registered.', 'err'); return; }
     verifying = true;
     setGateMsg('Verifying backup code…', 'warn');
     try {
-      var bKek = await deriveKEK(code, unb64(raw.kek.backup.salt), raw.kek.backup.iterations);
-      var cek = await unwrapCEK(raw.kek.backup.wrappedCek, bKek);
-      var payload = await decryptWithCEK(cek, raw.enc);
+      var bKek = await deriveKEK(code, unb64(vaultRawMemory.kek.backup.salt), vaultRawMemory.kek.backup.iterations);
+      var cek = await unwrapCEK(vaultRawMemory.kek.backup.wrappedCek, bKek);
+      var payload = await decryptWithCEK(cek, vaultRawMemory.enc);
       if (!payload.integrity || payload.integrity.app !== 'Pura Anniversary') throw new Error('integrity');
       vaultCEK = cek;
       vaultPayload = payload;
-      vaultRaw = raw;
       currentMode = payload.mode || 'passcode';
       vaultLockedSoft = false;
       verifying = false;
@@ -2176,48 +2115,88 @@
     }
   });
 
-  async function doMigration(passcode) {
-    var salt = randBytes(16);
-    var iters = DEFAULT_ITERATIONS;
-    var kek = await deriveKEK(passcode, salt, iters);
-    var cek = await generateCEK();
-    var wrapped = await wrapCEK(cek, kek);
-    var mode = 'passcode';
-    var pm = safeGetItem('pura_password_mode');
-    if (pm === 'ultra') mode = 'ultra';
-    else if (pm === '1' || pm === 'password') mode = 'password';
-    var notes = {};
-    try { notes = JSON.parse(safeGetItem('pura_notes')) || {}; } catch (e) {}
-    var capsules = [];
-    try { capsules = JSON.parse(safeGetItem('pura_capsules')) || []; } catch (e) {}
-    var backupCode = generateBackupCode();
-    var bSalt = randBytes(16);
-    var bKek = await deriveKEK(normalizeBackupCode(backupCode), bSalt, DEFAULT_ITERATIONS);
-    var bWrapped = await wrapCEK(cek, bKek);
-    var payload = {
-      integrity: { app: 'Pura Anniversary', schema: VAULT_VERSION },
-      setupComplete: false,
-      mode: mode, notes: notes, capsules: capsules, revert: null,
-      settings: { idleMs: 300000, strictLock: false, visibilityLock: true }
-    };
-    var enc = await encryptWithCEK(cek, payload);
-    var ok = saveVaultRaw({
-      v: VAULT_VERSION,
-      kek: {
-        pass: { salt: b64(salt), iterations: iters, wrappedCek: wrapped },
-        backup: { salt: b64(bSalt), iterations: DEFAULT_ITERATIONS, wrappedCek: bWrapped }
-      },
-      enc: enc
-    });
-    if (!ok) throw new Error('Migration save failed');
-    vaultCEK = cek; vaultPayload = payload; vaultRaw = loadVaultRaw();
-    currentMode = mode; vaultLockedSoft = false;
-    ['pura_passcode','pura_prev_passcode','pura_prev_time','pura_oldest_passcode','pura_notes','pura_capsules',
-     'pura_password_mode','pura_failed_attempts','pura_lockout_level','pura_lockout_until','pura_permanent_lock','pura_export_pref'].forEach(function (k) {
-      safeRemoveItem(k);
-    });
+  /* ============ WELCOME / SIGN-IN ============ */
+  function showWelcome() {
+    welcomeOverlay.style.display = '';
+    welcomeOverlay.classList.remove('hidden');
+    gate.classList.add('hidden');
+    gate.style.display = 'none';
+  }
+  function hideWelcome() {
+    welcomeOverlay.classList.add('hidden');
+    setTimeout(function () { welcomeOverlay.style.display = 'none'; }, 400);
   }
 
+  async function handleGoogleSignIn(intent) {
+    if (!fbAuth) { setWelcomeMsg('Firebase failed to load.', 'err'); return; }
+    btnSignIn.disabled = true;
+    btnLogIn.disabled = true;
+    signInLabel.textContent = 'Signing in…';
+    setWelcomeMsg('');
+    try {
+      var provider = new firebase.auth.GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      var result = await fbAuth.signInWithPopup(provider);
+      fbUser = result.user;
+      await routeAfterAuth(intent);
+    } catch (err) {
+      console.error('Sign-in failed:', err);
+      var code = err && err.code ? err.code : '';
+      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+        setWelcomeMsg('Sign-in cancelled.', 'warn');
+      } else if (code === 'auth/popup-blocked') {
+        setWelcomeMsg('Popup blocked. Allow popups for this site and try again.', 'err');
+      } else if (code === 'auth/unauthorized-domain') {
+        setWelcomeMsg('Domain not authorized. Add safeswing.github.io in Firebase → Authentication → Settings → Authorized domains.', 'err');
+      } else {
+        setWelcomeMsg('Sign-in failed: ' + (err.message || 'unknown'), 'err');
+      }
+    } finally {
+      btnSignIn.disabled = false;
+      btnLogIn.disabled = false;
+      signInLabel.textContent = 'Sign in with Google';
+    }
+  }
+
+  async function routeAfterAuth(intent) {
+    setWelcomeMsg('Loading your vault…', 'warn');
+    var raw = await loadVaultFromFirestore(fbUser.uid);
+    if (!raw) {
+      if (intent === 'login') {
+        setWelcomeMsg('No account found for this Google account. Tap Sign in to create one.', 'err');
+        return;
+      }
+      vaultRawMemory = null;
+      vaultCEK = null;
+      vaultPayload = null;
+      hideWelcome();
+      openSetupWizard();
+      return;
+    }
+    if (!raw.kek || !raw.kek.pass || raw.v !== VAULT_VERSION) {
+      setWelcomeMsg('Vault uses an unsupported format.', 'err');
+      return;
+    }
+    vaultRawMemory = raw;
+    vaultCEK = null;
+    vaultPayload = null;
+    currentMode = 'passcode';
+    hideWelcome();
+    gate.style.display = '';
+    gate.classList.remove('hidden');
+    var ls = getLockState();
+    if (ls.perm) showPermanentLockUI();
+    else if (ls.until && ls.until > Date.now()) showLockoutUI(ls.until);
+    else {
+      if (ls.until && ls.until <= Date.now()) { ls.until = 0; ls.failed = 0; setLockState(ls); }
+      showNormalUI();
+    }
+  }
+
+  btnSignIn.addEventListener('click', function () { handleGoogleSignIn('signin'); });
+  btnLogIn.addEventListener('click', function () { handleGoogleSignIn('login'); });
+
+  /* ============ SETUP WIZARD ============ */
   var setupOverlay = document.getElementById('setupOverlay');
   var setupSteps = setupOverlay.querySelectorAll('.setup-step');
   var setupBack = document.getElementById('setupBack');
@@ -2332,15 +2311,9 @@
       if (nw.length < minLen) { setupMsg.textContent = 'Minimum ' + minLen + ' characters required.'; setupMsg.className = 'form-msg err'; return; }
     }
     if (nw !== cf) { setupMsg.textContent = 'Values do not match.'; setupMsg.className = 'form-msg err'; return; }
-
-    // Guard: refuse to advance if the browser can't write
-    if (!storageStatus.writable) {
-      setupMsg.textContent = 'Cannot save — browser storage is blocked. See the banner at the top.';
-      setupMsg.className = 'form-msg err';
-      return;
-    }
-    if (!storageStatus.cryptoOK) {
-      setupMsg.textContent = 'Cannot encrypt — Web Crypto is unavailable in this browser.';
+    if (!fbUser) { setupMsg.textContent = 'You must be signed in.'; setupMsg.className = 'form-msg err'; return; }
+    if (!window.isSecureContext || !crypto.subtle) {
+      setupMsg.textContent = 'Web Crypto unavailable. HTTPS required.';
       setupMsg.className = 'form-msg err';
       return;
     }
@@ -2358,40 +2331,39 @@
       var bKek = await deriveKEK(normalizeBackupCode(backupCode), bSalt, DEFAULT_ITERATIONS);
       var bWrapped = await wrapCEK(cek, bKek);
 
-      var payload = vaultPayload || { notes: {}, capsules: [], revert: null };
-      payload.integrity = { app: 'Pura Anniversary', schema: VAULT_VERSION };
-      payload.setupComplete = true;
-      payload.mode = setupChosenType;
-      if (!payload.settings) payload.settings = { idleMs: 300000, strictLock: false, visibilityLock: true };
-
+      var payload = {
+        integrity: { app: 'Pura Anniversary', schema: VAULT_VERSION },
+        setupComplete: true,
+        mode: setupChosenType,
+        notes: {},
+        capsules: [],
+        revert: null,
+        settings: { idleMs: 300000, strictLock: false, visibilityLock: true }
+      };
       var enc = await encryptWithCEK(cek, payload);
-
-      // Critical: only proceed if the write is verified
-      var ok = saveVaultRaw({
+      var newRaw = {
         v: VAULT_VERSION,
         kek: {
           pass: { salt: b64(salt), iterations: iters, wrappedCek: wrapped },
           backup: { salt: b64(bSalt), iterations: DEFAULT_ITERATIONS, wrappedCek: bWrapped }
         },
         enc: enc
-      });
-      if (!ok) {
-        setupMsg.textContent = 'Save failed. The vault was not written to this browser. See banner above.';
-        setupMsg.className = 'form-msg err';
-        return;
-      }
+      };
 
-      // Re-read to confirm
-      var verifyRaw = loadVaultRaw();
-      if (!verifyRaw || verifyRaw.v !== VAULT_VERSION) {
-        setupMsg.textContent = 'Save verification failed. The vault did not persist.';
-        setupMsg.className = 'form-msg err';
-        return;
-      }
-
-      vaultCEK = cek; vaultPayload = payload; vaultRaw = verifyRaw;
+      vaultRawMemory = newRaw;
+      vaultPayload = payload;
+      vaultCEK = cek;
       currentMode = setupChosenType;
       setupGeneratedBackup = backupCode;
+      queueFirestoreWrite();
+
+      setupMsg.textContent = 'Saving to cloud…'; setupMsg.className = 'form-msg';
+      var syncOK = await waitForCloudSync();
+      if (!syncOK) {
+        setupMsg.textContent = 'Cloud save failed. Check the banner at the top.';
+        setupMsg.className = 'form-msg err';
+        return;
+      }
 
       setupBackupCode.textContent = backupCode;
       setupMsg.textContent = ''; setupMsg.className = 'form-msg';
@@ -2421,12 +2393,12 @@
     closeSetupWizard();
     resetLockState();
     vaultLockedSoft = false;
-    gate.classList.add('hidden');
-    setTimeout(function () { gate.style.display = 'none'; }, 400);
     refreshAllSettingsUI();
+    switchView('anniversary');
     armIdle();
   });
 
+  /* ============ IDLE / VISIBILITY ============ */
   var idleTimer = null;
   var lastActivityReset = 0;
   var hiddenAt = null;
@@ -2451,8 +2423,7 @@
     exportOverlay.classList.remove('open');
     devOverlay.classList.remove('open');
     externalOverlay.classList.remove('open');
-    if (strict) { vaultCEK = null; vaultPayload = null; vaultRaw = null; }
-    gateMode = 'soft-return';
+    if (strict) { vaultCEK = null; vaultPayload = null; }
     gate.style.display = '';
     gate.classList.remove('hidden');
     showNormalUI();
@@ -2484,6 +2455,7 @@
     else noteActivity();
   });
 
+  /* ============ ANNIVERSARIES ============ */
   var FIRST_YEAR = 2026, MONTH = 8, DAY = 23, TOTAL = 67, DEEP_TIER = 31;
   var RETIREMENT_DATE = new Date(2026, 9, 8);
   var RETIREMENT_LABEL = 'Retirement Date';
@@ -2671,6 +2643,7 @@
   });
   clearEl.addEventListener('click', function () { searchEl.value = ''; applyFilter(); searchEl.focus(); });
 
+  /* ============ MENU / EDITOR / VIEWER ============ */
   var menuOverlay = document.getElementById('menuOverlay');
   var menuTitle = document.getElementById('menuTitle');
   var menuSub = document.getElementById('menuSub');
@@ -2861,6 +2834,7 @@
     }
   }
 
+  /* ============ SETTINGS ============ */
   var settingsBtn = document.getElementById('settingsBtn');
   var settingsOverlay = document.getElementById('settingsOverlay');
   var closeSettings = document.getElementById('closeSettings');
@@ -2900,7 +2874,7 @@
     biometric: 'face id touch id fingerprint biometric webauthn prf',
     data: 'export import backup json vault storage diagnostics',
     device: 'device info model os browser hardware screen cpu',
-    danger: 'reset erase delete factory developer simulate test mode'
+    danger: 'reset erase delete factory developer simulate test mode sign out logout'
   };
   function filterSettingsList(q) {
     q = q.trim().toLowerCase();
@@ -2913,22 +2887,28 @@
   }
   settingsSearch.addEventListener('input', function () { filterSettingsList(settingsSearch.value); });
 
-  // Storage diagnostics panel
   var storageDiag = document.getElementById('storageDiag');
   var refreshDiagBtn = document.getElementById('refreshDiagBtn');
   function renderStorageDiag() {
     if (!storageDiag) return;
-    var d = runStorageDiagnostic();
     var rows = [];
-    rows.push(['localStorage supported', d.localStorageSupported ? 'Yes' : 'No', d.localStorageSupported]);
-    rows.push(['localStorage writable', d.localStorageWritable ? 'Yes' : 'No', d.localStorageWritable]);
-    rows.push(['Write verified', d.localStorageVerified ? 'Yes' : 'No', d.localStorageVerified]);
-    rows.push(['Web Crypto (crypto.subtle)', d.cryptoSubtleSupported ? 'Yes' : 'No', d.cryptoSubtleSupported]);
-    rows.push(['Secure context', d.isSecureContext ? 'Yes' : 'No', d.isSecureContext]);
-    rows.push(['Protocol', d.protocol || '?', d.protocol === 'https:' || d.protocol === 'http:']);
-    rows.push(['Origin', d.origin || '(none)', !!d.origin && d.origin !== 'null']);
-    rows.push(['Vault size', d.existingVaultSize > 0 ? Math.round(d.existingVaultSize / 1024) + ' KB' : 'Not present', d.existingVaultSize > 0]);
-    if (d.error) rows.push(['Last error', d.error, false]);
+    var lsOK = false;
+    try { localStorage.setItem('__t','1'); lsOK = localStorage.getItem('__t') === '1'; localStorage.removeItem('__t'); } catch(e){}
+    rows.push(['Signed in', fbUser ? 'Yes' : 'No', !!fbUser]);
+    rows.push(['User ID', fbUser ? fbUser.uid.slice(0, 12) + '…' : '—', !!fbUser]);
+    rows.push(['Firestore connected', fbDb ? 'Yes' : 'No', !!fbDb]);
+    rows.push(['Web Crypto', crypto && crypto.subtle ? 'Yes' : 'No', !!(crypto && crypto.subtle)]);
+    rows.push(['Secure context', isSecureContextOK ? 'Yes' : 'No', isSecureContextOK]);
+    rows.push(['Protocol', location.protocol || '?', location.protocol === 'https:']);
+    rows.push(['Origin', location.origin || '(none)', !!location.origin && location.origin !== 'null']);
+    rows.push(['Local cache available', lsOK ? 'Yes' : 'No', lsOK]);
+    rows.push(['Last cloud save', lastFirestoreWriteOK ? 'OK' : 'Failed', lastFirestoreWriteOK]);
+    if (vaultRawMemory) {
+      var size = JSON.stringify(vaultRawMemory).length;
+      rows.push(['Vault size', Math.round(size / 1024) + ' KB', size > 0]);
+    } else {
+      rows.push(['Vault', 'Not loaded', false]);
+    }
     var html = '';
     for (var i = 0; i < rows.length; i++) {
       var cls = rows[i][2] ? 'ok' : 'err';
@@ -2965,37 +2945,29 @@
       if (nw.length < minLen) { changeMsg.textContent = 'Minimum ' + minLen + ' characters required.'; changeMsg.className = 'form-msg err'; return; }
     }
     if (nw !== cf) { changeMsg.textContent = 'Values do not match.'; changeMsg.className = 'form-msg err'; return; }
-
     changeMsg.textContent = 'Verifying current…'; changeMsg.className = 'form-msg';
     try {
-      var raw = loadVaultRaw();
-      var oldKek = await deriveKEK(cur, unb64(raw.kek.pass.salt), raw.kek.pass.iterations);
-      var cek = await unwrapCEK(raw.kek.pass.wrappedCek, oldKek);
+      var oldKek = await deriveKEK(cur, unb64(vaultRawMemory.kek.pass.salt), vaultRawMemory.kek.pass.iterations);
+      var cek = await unwrapCEK(vaultRawMemory.kek.pass.wrappedCek, oldKek);
 
       var newSalt = randBytes(16);
       var newIters = DEFAULT_ITERATIONS;
       var newKek = await deriveKEK(nw, newSalt, newIters);
       var newWrapped = await wrapCEK(cek, newKek);
 
-      raw.kek.pass = {
+      vaultRawMemory.kek.pass = {
         salt: b64(newSalt),
         iterations: newIters,
         wrappedCek: newWrapped,
         prev: {
-          salt: raw.kek.pass.salt,
-          iterations: raw.kek.pass.iterations,
-          wrappedCek: raw.kek.pass.wrappedCek,
+          salt: vaultRawMemory.kek.pass.salt,
+          iterations: vaultRawMemory.kek.pass.iterations,
+          wrappedCek: vaultRawMemory.kek.pass.wrappedCek,
           time: Date.now()
         }
       };
-      var ok = saveVaultRaw(raw);
-      if (!ok) {
-        changeMsg.textContent = 'Save failed. See banner.'; changeMsg.className = 'form-msg err';
-        return;
-      }
-      vaultRaw = raw;
+      queueFirestoreWrite();
       vaultCEK = cek;
-
       changeForm.reset();
       changeMsg.textContent = 'Updated successfully.'; changeMsg.className = 'form-msg ok';
       refreshRevertBox();
@@ -3005,26 +2977,23 @@
     }
   });
 
-  revertBtn.addEventListener('click', async function () {
-    var raw = loadVaultRaw();
-    if (!raw || !raw.kek || !raw.kek.pass || !raw.kek.pass.prev) {
+  revertBtn.addEventListener('click', function () {
+    if (!vaultRawMemory || !vaultRawMemory.kek || !vaultRawMemory.kek.pass || !vaultRawMemory.kek.pass.prev) {
       changeMsg.textContent = 'Revert is not available.'; changeMsg.className = 'form-msg err';
       refreshRevertBox();
       return;
     }
-    var prev = raw.kek.pass.prev;
+    var prev = vaultRawMemory.kek.pass.prev;
     var elapsed = Date.now() - prev.time;
     if (elapsed > REVERT_WINDOW_MS) {
-      delete raw.kek.pass.prev;
-      saveVaultRaw(raw);
+      delete vaultRawMemory.kek.pass.prev;
+      queueFirestoreWrite();
       changeMsg.textContent = 'Revert window has expired.'; changeMsg.className = 'form-msg err';
       refreshRevertBox();
       return;
     }
-    raw.kek.pass = { salt: prev.salt, iterations: prev.iterations, wrappedCek: prev.wrappedCek };
-    var ok = saveVaultRaw(raw);
-    if (!ok) { changeMsg.textContent = 'Save failed.'; changeMsg.className = 'form-msg err'; return; }
-    vaultRaw = raw;
+    vaultRawMemory.kek.pass = { salt: prev.salt, iterations: prev.iterations, wrappedCek: prev.wrappedCek };
+    queueFirestoreWrite();
     changeMsg.textContent = 'Restored to previous credential.'; changeMsg.className = 'form-msg ok';
     refreshRevertBox();
     setTimeout(function () { changeMsg.textContent = ''; }, 2500);
@@ -3032,12 +3001,8 @@
 
   function refreshRevertBox() {
     var info = getRevertInfo();
-    if (info) {
-      revertBox.classList.add('show');
-      revertTime.textContent = formatRemaining(info.remaining);
-    } else {
-      revertBox.classList.remove('show');
-    }
+    if (info) { revertBox.classList.add('show'); revertTime.textContent = formatRemaining(info.remaining); }
+    else revertBox.classList.remove('show');
   }
 
   regenBackupBtn.addEventListener('click', async function () {
@@ -3047,11 +3012,8 @@
       var bSalt = randBytes(16);
       var bKek = await deriveKEK(normalizeBackupCode(code), bSalt, DEFAULT_ITERATIONS);
       var bWrapped = await wrapCEK(vaultCEK, bKek);
-      var raw = loadVaultRaw();
-      raw.kek.backup = { salt: b64(bSalt), iterations: DEFAULT_ITERATIONS, wrappedCek: bWrapped };
-      var ok = saveVaultRaw(raw);
-      if (!ok) { regenBackupMsg.textContent = 'Save failed.'; regenBackupMsg.className = 'form-msg err'; return; }
-      vaultRaw = raw;
+      vaultRawMemory.kek.backup = { salt: b64(bSalt), iterations: DEFAULT_ITERATIONS, wrappedCek: bWrapped };
+      queueFirestoreWrite();
       regenBackupMsg.textContent = 'New code: ' + code;
       regenBackupMsg.className = 'form-msg ok';
       regenBackupMsg.style.fontFamily = 'ui-monospace, monospace';
@@ -3127,9 +3089,9 @@
       cfmPass.classList.remove('digits'); cfmPass.removeAttribute('maxlength'); cfmPass.removeAttribute('inputmode'); cfmPass.placeholder = mode === 'ultra' ? 'Minimum 128 characters' : 'Minimum 32 characters';
       chgNewTools.style.display = 'flex';
     }
-    if (vaultRaw && vaultRaw.kek && vaultRaw.kek.pass) {
-      iterSelect.value = String(vaultRaw.kek.pass.iterations);
-      if (iterSelect.value !== String(vaultRaw.kek.pass.iterations)) iterSelect.value = '600000';
+    if (vaultRawMemory && vaultRawMemory.kek && vaultRawMemory.kek.pass) {
+      iterSelect.value = String(vaultRawMemory.kek.pass.iterations);
+      if (iterSelect.value !== String(vaultRawMemory.kek.pass.iterations)) iterSelect.value = '600000';
     }
   }
 
@@ -3148,22 +3110,19 @@
     var newIter = parseInt(iterSelect.value, 10);
     var cur = iterCur.value;
     if (!cur) { iterMsg.textContent = 'Enter your current credential.'; iterMsg.className = 'form-msg err'; return; }
-    if (!newIter || !vaultRaw) return;
-    if (newIter === vaultRaw.kek.pass.iterations) { iterMsg.textContent = 'No change.'; iterMsg.className = 'form-msg warn'; return; }
+    if (!newIter || !vaultRawMemory) return;
+    if (newIter === vaultRawMemory.kek.pass.iterations) { iterMsg.textContent = 'No change.'; iterMsg.className = 'form-msg warn'; return; }
     iterMsg.textContent = 'Applying…'; iterMsg.className = 'form-msg';
     try {
-      var raw = loadVaultRaw();
-      var oldKek = await deriveKEK(cur, unb64(raw.kek.pass.salt), raw.kek.pass.iterations);
-      var cek = await unwrapCEK(raw.kek.pass.wrappedCek, oldKek);
+      var oldKek = await deriveKEK(cur, unb64(vaultRawMemory.kek.pass.salt), vaultRawMemory.kek.pass.iterations);
+      var cek = await unwrapCEK(vaultRawMemory.kek.pass.wrappedCek, oldKek);
       var newSalt = randBytes(16);
       var newKek = await deriveKEK(cur, newSalt, newIter);
       var newWrapped = await wrapCEK(cek, newKek);
-      var preservedPrev = raw.kek.pass.prev || null;
-      raw.kek.pass = { salt: b64(newSalt), iterations: newIter, wrappedCek: newWrapped };
-      if (preservedPrev) raw.kek.pass.prev = preservedPrev;
-      var ok = saveVaultRaw(raw);
-      if (!ok) { iterMsg.textContent = 'Save failed.'; iterMsg.className = 'form-msg err'; return; }
-      vaultRaw = raw;
+      var preservedPrev = vaultRawMemory.kek.pass.prev || null;
+      vaultRawMemory.kek.pass = { salt: b64(newSalt), iterations: newIter, wrappedCek: newWrapped };
+      if (preservedPrev) vaultRawMemory.kek.pass.prev = preservedPrev;
+      queueFirestoreWrite();
       vaultCEK = cek;
       iterCur.value = '';
       iterCurField.style.display = 'none';
@@ -3222,18 +3181,14 @@
     }
     switchMsg.textContent = 'Re-wrapping…'; switchMsg.className = 'form-msg';
     try {
-      var raw = loadVaultRaw();
-      var oldKek = await deriveKEK(cur, unb64(raw.kek.pass.salt), raw.kek.pass.iterations);
-      var cek = await unwrapCEK(raw.kek.pass.wrappedCek, oldKek);
+      var oldKek = await deriveKEK(cur, unb64(vaultRawMemory.kek.pass.salt), vaultRawMemory.kek.pass.iterations);
+      var cek = await unwrapCEK(vaultRawMemory.kek.pass.wrappedCek, oldKek);
       var newSalt = randBytes(16);
       var newKek = await deriveKEK(nw, newSalt, DEFAULT_ITERATIONS);
       var newWrapped = await wrapCEK(cek, newKek);
-      var preservedPrev = raw.kek.pass.prev || null;
-      raw.kek.pass = { salt: b64(newSalt), iterations: DEFAULT_ITERATIONS, wrappedCek: newWrapped };
-      if (preservedPrev) raw.kek.pass.prev = preservedPrev;
-      var ok = saveVaultRaw(raw);
-      if (!ok) { switchMsg.textContent = 'Save failed.'; switchMsg.className = 'form-msg err'; return; }
-      vaultRaw = raw;
+      var preservedPrev = vaultRawMemory.kek.pass.prev || null;
+      vaultRawMemory.kek.pass = { salt: b64(newSalt), iterations: DEFAULT_ITERATIONS, wrappedCek: newWrapped };
+      if (preservedPrev) vaultRawMemory.kek.pass.prev = preservedPrev;
       vaultCEK = cek;
       currentMode = goingToPassword ? 'password' : 'passcode';
       vaultPayload.mode = currentMode;
@@ -3267,18 +3222,14 @@
     if (nw !== cf) { ultraMsg.textContent = 'Passwords do not match.'; ultraMsg.className = 'form-msg err'; return; }
     ultraMsg.textContent = 'Re-wrapping…'; ultraMsg.className = 'form-msg';
     try {
-      var raw = loadVaultRaw();
-      var oldKek = await deriveKEK(cur, unb64(raw.kek.pass.salt), raw.kek.pass.iterations);
-      var cek = await unwrapCEK(raw.kek.pass.wrappedCek, oldKek);
+      var oldKek = await deriveKEK(cur, unb64(vaultRawMemory.kek.pass.salt), vaultRawMemory.kek.pass.iterations);
+      var cek = await unwrapCEK(vaultRawMemory.kek.pass.wrappedCek, oldKek);
       var newSalt = randBytes(16);
       var newKek = await deriveKEK(nw, newSalt, DEFAULT_ITERATIONS);
       var newWrapped = await wrapCEK(cek, newKek);
-      var preservedPrev = raw.kek.pass.prev || null;
-      raw.kek.pass = { salt: b64(newSalt), iterations: DEFAULT_ITERATIONS, wrappedCek: newWrapped };
-      if (preservedPrev) raw.kek.pass.prev = preservedPrev;
-      var ok = saveVaultRaw(raw);
-      if (!ok) { ultraMsg.textContent = 'Save failed.'; ultraMsg.className = 'form-msg err'; return; }
-      vaultRaw = raw;
+      var preservedPrev = vaultRawMemory.kek.pass.prev || null;
+      vaultRawMemory.kek.pass = { salt: b64(newSalt), iterations: DEFAULT_ITERATIONS, wrappedCek: newWrapped };
+      if (preservedPrev) vaultRawMemory.kek.pass.prev = preservedPrev;
       vaultCEK = cek;
       currentMode = 'ultra';
       vaultPayload.mode = 'ultra';
@@ -3378,6 +3329,7 @@
     setTimeout(function () { bioMsg.textContent = ''; }, 2500);
   });
 
+  /* ============ DATA ============ */
   var exportBtn = document.getElementById('exportBtn');
   var importBtn = document.getElementById('importBtn');
   var importFile = document.getElementById('importFile');
@@ -3406,7 +3358,7 @@
     showDataMsg('Preferences cleared.', 'ok');
   });
   function buildExportPayload(includeMeta) {
-    var data = { app: 'Pura Anniversary', version: 14, exportedAt: new Date().toISOString(), notes: getNotes(), capsules: getCapsules() };
+    var data = { app: 'Pura Anniversary', version: 15, exportedAt: new Date().toISOString(), notes: getNotes(), capsules: getCapsules() };
     if (includeMeta) data.passwordMode = getMode();
     return data;
   }
@@ -3434,13 +3386,9 @@
     showDataMsg(ok ? 'Backup downloaded.' : 'Export failed.', ok ? 'ok' : 'err');
   }
   exportVaultBtn.addEventListener('click', function () {
-    var raw = safeGetItem(KEY_VAULT);
-    if (!raw) { showDataMsg('No vault found.', 'err'); return; }
-    try {
-      var parsed = JSON.parse(raw);
-      var ok = downloadJSON(parsed, 'pura-vault-' + stampDate() + '.json');
-      showDataMsg(ok ? 'Encrypted vault downloaded.' : 'Export failed.', ok ? 'ok' : 'err');
-    } catch (e) { showDataMsg('Export failed.', 'err'); }
+    if (!vaultRawMemory) { showDataMsg('No vault loaded.', 'err'); return; }
+    var ok = downloadJSON(vaultRawMemory, 'pura-vault-' + stampDate() + '.json');
+    showDataMsg(ok ? 'Encrypted vault downloaded.' : 'Export failed.', ok ? 'ok' : 'err');
   });
   importBtn.addEventListener('click', function () { importFile.value = ''; importFile.click(); });
 
@@ -3501,8 +3449,7 @@
       var nBKek = await deriveKEK(normalizeBackupCode(newBackup), nBSalt, DEFAULT_ITERATIONS);
       var nBWrapped = await wrapCEK(cek, nBKek);
       newRaw.kek.backup = { salt: b64(nBSalt), iterations: DEFAULT_ITERATIONS, wrappedCek: nBWrapped };
-      var ok = saveVaultRaw(newRaw);
-      if (!ok) { importOldMsg.textContent = 'Save failed. See banner.'; importOldMsg.className = 'form-msg err'; return; }
+      saveVaultRaw(newRaw);
       setTimeout(function () {
         window.alert('Imported. Your new backup code is:\n\n' + newBackup + '\n\nSave this — it will not be shown again.');
       }, 300);
@@ -3522,8 +3469,7 @@
         var data = JSON.parse(ev.target.result);
         if (!data || typeof data !== 'object') throw new Error('bad');
         if (data.v === VAULT_VERSION && data.kek && data.enc) {
-          var ok = saveVaultRaw(data);
-          if (!ok) { showDataMsg('Import save failed. See banner.', 'err'); return; }
+          saveVaultRaw(data);
           showDataMsg('Vault imported. Reloading…', 'ok');
           setTimeout(function () { location.reload(); }, 900);
           return;
@@ -3577,6 +3523,7 @@
     lockMsg.textContent = 'Backup downloaded.';
   });
 
+  /* ============ DEVICE INFO ============ */
   var deviceInfo = document.getElementById('deviceInfo');
   function detectDeviceModel() {
     var u = navigator.userAgent || '';
@@ -3627,7 +3574,7 @@
     rows.push(['Connection', navigator.onLine ? 'Online' : 'Offline']);
     rows.push(['Secure Context', isSecureContextOK ? 'Yes' : 'No']);
     rows.push(['Encryption', 'AES-GCM 256 (envelope)']);
-    rows.push(['KDF', 'PBKDF2-SHA-256 (' + (vaultRaw && vaultRaw.kek ? vaultRaw.kek.pass.iterations.toLocaleString() : '?') + ' iters)']);
+    rows.push(['Cloud', 'Firebase Firestore']);
     var bioCred = getBioCred();
     var bioStatus = isTestMode() ? 'Disabled (Test Mode)' :
       (bioCred ? (bioCred.mode === 'prf' ? 'Cryptographic (PRF)' : 'Convenience') :
@@ -3640,6 +3587,7 @@
     deviceInfo.innerHTML = html;
   }
 
+  /* ============ DEV MODE / EXTERNAL ============ */
   var openDevBtn = document.getElementById('openDevBtn');
   var devOverlay = document.getElementById('devOverlay');
   var devLockedView = document.getElementById('devLockedView');
@@ -3743,22 +3691,40 @@
   closeExternal.addEventListener('click', closeExternalDialog);
   externalOverlay.addEventListener('click', function (e) { if (e.target === externalOverlay) closeExternalDialog(); });
 
+  /* ============ SIGN OUT & FACTORY RESET ============ */
+  var signOutBtn = document.getElementById('signOutBtn');
+  var accountHint = document.getElementById('accountHint');
   var factoryResetBtn = document.getElementById('factoryResetBtn');
   var resetMsg = document.getElementById('resetMsg');
-  factoryResetBtn.addEventListener('click', function () {
-    var ok = window.confirm('Factory Reset will permanently erase your encrypted vault, backup code, biometric enrollment, and lock state.\n\nThis cannot be undone. Continue?');
+
+  signOutBtn.addEventListener('click', async function () {
+    if (!confirm('Sign out? You will need to sign in again to access your vault.')) return;
+    try {
+      if (fbAuth) await fbAuth.signOut();
+    } catch (e) {}
+  });
+
+  factoryResetBtn.addEventListener('click', async function () {
+    var ok = window.confirm('Factory Reset will permanently erase your encrypted vault from the cloud, backup code, biometric enrollment, and all lock state.\n\nThis cannot be undone. Continue?');
     if (!ok) return;
     var ok2 = window.confirm('Last chance. Export a backup first if you want to keep anything.\n\nTap OK to erase everything.');
     if (!ok2) return;
-    [KEY_VAULT, KEY_BIO_CRED, KEY_LOCK_STATE, KEY_EXPORT_PREF, KEY_EXTERNAL_OK].forEach(function (k) { safeRemoveItem(k); });
-    ['pura_passcode','pura_prev_passcode','pura_prev_time','pura_oldest_passcode','pura_notes','pura_capsules',
-     'pura_password_mode','pura_failed_attempts','pura_lockout_level','pura_lockout_until','pura_permanent_lock'].forEach(function (k) {
-      safeRemoveItem(k);
-    });
+    try {
+      if (fbUser && fbDb) {
+        await fbDb.collection('users').doc(fbUser.uid).delete();
+      }
+    } catch (e) {
+      console.error('Delete failed:', e);
+    }
+    [KEY_BIO_CRED, KEY_LOCK_STATE, KEY_EXPORT_PREF, KEY_EXTERNAL_OK].forEach(function (k) { safeRemoveItem(k); });
+    vaultRawMemory = null;
+    vaultCEK = null;
+    vaultPayload = null;
     resetMsg.textContent = 'Reset complete. Reloading…'; resetMsg.className = 'form-msg ok';
     setTimeout(function () { location.reload(); }, 900);
   });
 
+  /* ============ REFRESH ALL SETTINGS UI ============ */
   function refreshAllSettingsUI() {
     refreshRevertBox();
     refreshModeDisplay();
@@ -3766,6 +3732,7 @@
     refreshBioSettings();
     renderDeviceInfo();
     renderStorageDiag();
+    if (fbUser && accountHint) accountHint.textContent = 'Signed in as ' + (fbUser.email || fbUser.uid);
     var s = getSettings();
     idleSelect.value = String(s.idleMs || 0);
     strictLockToggle.checked = !!s.strictLock;
@@ -3801,39 +3768,53 @@
     }
   });
 
-  (async function init() {
-    var raw = loadVaultRaw();
-    switchView('anniversary');
+  /* ============ BOOTSTRAP ============ */
+  switchView('anniversary');
 
-    if (!raw) {
-      var legacy = safeGetItem('pura_passcode');
-      if (legacy) {
-        gateMode = 'migration';
-        var ls = getLockState();
-        if (ls.perm) showPermanentLockUI();
-        else if (ls.until && ls.until > Date.now()) showLockoutUI(ls.until);
-        else { if (ls.until && ls.until <= Date.now()) { ls.until = 0; ls.failed = 0; setLockState(ls); } showNormalUI(); }
+  if (!fbAuth) {
+    showWelcome();
+    setWelcomeMsg('Firebase SDK failed to load. Check your internet connection and refresh.', 'err');
+  } else {
+    showWelcome();
+    fbAuth.onAuthStateChanged(async function (user) {
+      if (!user) {
+        fbUser = null;
+        vaultRawMemory = null;
+        vaultCEK = null;
+        vaultPayload = null;
+        showWelcome();
         return;
       }
-      openSetupWizard();
-      return;
-    }
-
-    if (!raw.kek || !raw.kek.pass || raw.v !== VAULT_VERSION) {
-      gate.classList.add('hidden');
-      setTimeout(function () { gate.style.display = 'none'; }, 400);
-      openSetupWizard();
-      return;
-    }
-
-    var ls2 = getLockState();
-    if (ls2.perm) showPermanentLockUI();
-    else if (ls2.until && ls2.until > Date.now()) showLockoutUI(ls2.until);
-    else {
-      if (ls2.until && ls2.until <= Date.now()) { ls2.until = 0; ls2.failed = 0; setLockState(ls2); }
-      showNormalUI();
-    }
-  })();
+      fbUser = user;
+      setWelcomeMsg('Loading your vault…', 'warn');
+      var raw = await loadVaultFromFirestore(user.uid);
+      if (!raw) {
+        // No vault — show welcome with "Sign in" prompt
+        showWelcome();
+        setWelcomeMsg('Tap Sign in to set up your vault.', 'warn');
+        return;
+      }
+      if (!raw.kek || !raw.kek.pass || raw.v !== VAULT_VERSION) {
+        showWelcome();
+        setWelcomeMsg('Vault uses an unsupported format.', 'err');
+        return;
+      }
+      vaultRawMemory = raw;
+      vaultCEK = null;
+      vaultPayload = null;
+      currentMode = 'passcode';
+      hideWelcome();
+      gate.style.display = '';
+      gate.classList.remove('hidden');
+      var ls = getLockState();
+      if (ls.perm) showPermanentLockUI();
+      else if (ls.until && ls.until > Date.now()) showLockoutUI(ls.until);
+      else {
+        if (ls.until && ls.until <= Date.now()) { ls.until = 0; ls.failed = 0; setLockState(ls); }
+        showNormalUI();
+      }
+    });
+  }
 
 })();
 </script>
