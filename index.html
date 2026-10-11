@@ -1631,78 +1631,104 @@
     var svg = gridEl.querySelector('.pattern-svg');
     var sequence = [];
     var isDrawing = false;
+    var activePointer = null;
     var rects = [];
     var gridRect = null;
+    var tail = null;
 
     function updateRects() {
       gridRect = gridEl.getBoundingClientRect();
       rects = [];
       for (var i = 0; i < dots.length; i++) {
         var r = dots[i].getBoundingClientRect();
-        rects.push({ x: r.left + r.width/2, y: r.top + r.height/2, r: Math.max(r.width, r.height)/2, el: dots[i] });
+        rects.push({ x: r.left + r.width/2, y: r.top + r.height/2, r: Math.min(r.width, r.height)/2, el: dots[i] });
       }
     }
     function hitTest(x, y) {
       for (var i = 0; i < rects.length; i++) {
         var dx = x - rects[i].x;
         var dy = y - rects[i].y;
-        if (Math.sqrt(dx*dx + dy*dy) < rects[i].r * 1.15) return i;
+        if (Math.sqrt(dx*dx + dy*dy) <= rects[i].r) return i;
       }
       return -1;
     }
     function drawLines() {
-      if (!gridRect) return;
+      if (!gridRect || !rects.length) return;
+      var offX = gridRect.left + gridEl.clientLeft;
+      var offY = gridRect.top + gridEl.clientTop;
       var html = '';
+      var stroke = 'stroke="rgba(255,255,255,.85)" stroke-width="3" stroke-linecap="round"';
       for (var i = 1; i < sequence.length; i++) {
-        var a = rects[sequence[i-1]];
-        var b = rects[sequence[i]];
-        var x1 = a.x - gridRect.left;
-        var y1 = a.y - gridRect.top;
-        var x2 = b.x - gridRect.left;
-        var y2 = b.y - gridRect.top;
-        html += '<line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'" stroke="rgba(255,255,255,.85)" stroke-width="3" stroke-linecap="round"/>';
+        var a = rects[sequence[i-1]], b = rects[sequence[i]];
+        html += '<line x1="'+(a.x-offX)+'" y1="'+(a.y-offY)+'" x2="'+(b.x-offX)+'" y2="'+(b.y-offY)+'" '+stroke+'/>';
+      }
+      if (isDrawing && tail && sequence.length) {
+        var l = rects[sequence[sequence.length-1]];
+        html += '<line x1="'+(l.x-offX)+'" y1="'+(l.y-offY)+'" x2="'+(tail.x-offX)+'" y2="'+(tail.y-offY)+'" stroke="rgba(255,255,255,.4)" stroke-width="3" stroke-linecap="round"/>';
       }
       svg.innerHTML = html;
     }
-    function addDot(idx) {
-      if (sequence.indexOf(idx) !== -1) return;
+    function pushDot(idx) {
       sequence.push(idx);
       dots[idx].classList.add('active');
-      drawLines();
+    }
+    function addDot(idx) {
+      if (sequence.indexOf(idx) !== -1) return;
+      // Straight line across the grid passes through the middle dot: include it (like Android).
+      if (sequence.length) {
+        var last = sequence[sequence.length - 1];
+        var r1 = Math.floor(last / 3), c1 = last % 3, r2 = Math.floor(idx / 3), c2 = idx % 3;
+        if ((r1 + r2) % 2 === 0 && (c1 + c2) % 2 === 0) {
+          var mid = ((r1 + r2) / 2) * 3 + (c1 + c2) / 2;
+          if (mid !== last && mid !== idx && sequence.indexOf(mid) === -1) pushDot(mid);
+        }
+      }
+      pushDot(idx);
     }
     function reset() {
       sequence = [];
+      tail = null;
       svg.innerHTML = '';
       for (var i = 0; i < dots.length; i++) dots[i].classList.remove('active');
       isDrawing = false;
+      activePointer = null;
     }
     function handleStart(e) {
+      if (isDrawing) return;
       e.preventDefault();
       updateRects();
+      reset();                 // reset() clears isDrawing, so set it AFTER
       isDrawing = true;
-      reset();
-      sequence = [];
+      activePointer = e.pointerId;
+      try { gridEl.setPointerCapture(e.pointerId); } catch (err) {}
       var idx = hitTest(e.clientX, e.clientY);
       if (idx !== -1) addDot(idx);
-      try { gridEl.setPointerCapture(e.pointerId); } catch (err) {}
+      tail = { x: e.clientX, y: e.clientY };
+      drawLines();
     }
     function handleMove(e) {
-      if (!isDrawing) return;
+      if (!isDrawing || e.pointerId !== activePointer) return;
       e.preventDefault();
       var idx = hitTest(e.clientX, e.clientY);
       if (idx !== -1) addDot(idx);
+      tail = { x: e.clientX, y: e.clientY };
+      drawLines();
     }
     function handleEnd(e) {
-      if (!isDrawing) return;
+      if (!isDrawing || (e && e.pointerId !== undefined && e.pointerId !== activePointer)) return;
       isDrawing = false;
-      if (sequence.length > 0) onComplete(sequence.slice(), gridRect);
+      activePointer = null;
+      tail = null;
+      try { if (e && e.pointerId !== undefined) gridEl.releasePointerCapture(e.pointerId); } catch (err) {}
+      drawLines();
+      if (sequence.length > 0) onComplete(sequence.slice());
     }
 
     gridEl.addEventListener('pointerdown', handleStart);
     gridEl.addEventListener('pointermove', handleMove);
     gridEl.addEventListener('pointerup', handleEnd);
     gridEl.addEventListener('pointercancel', handleEnd);
-    gridEl.addEventListener('pointerleave', function (e) { if (isDrawing) handleEnd(e); });
+    window.addEventListener('resize', function () { if (!isDrawing) updateRects(); });
 
     return { reset: reset, updateRects: updateRects };
   }
@@ -1760,10 +1786,14 @@
     if (isGuest) { if (!vaultPayload) return Promise.resolve(false); return Promise.resolve(saveVaultRaw(vaultPayload)); }
     if (!vaultCEK || !vaultPayload || !vaultRawMemory) return Promise.resolve(false);
     var snap = JSON.parse(JSON.stringify(vaultPayload));
-    var rawSnap = JSON.parse(JSON.stringify(vaultRawMemory));
     var cek = vaultCEK;
     saveChain = saveChain.then(function () {
-      return encryptWithCEK(cek, snap).then(function (enc) { rawSnap.enc = enc; return saveVaultRaw(rawSnap); });
+      return encryptWithCEK(cek, snap).then(function (enc) {
+        var rawSnap = JSON.parse(JSON.stringify(vaultRawMemory));
+        rawSnap.enc = enc;
+        if (VALID_MODES.indexOf(snap.mode) !== -1) rawSnap.mode = snap.mode;
+        return saveVaultRaw(rawSnap);
+      });
     }).catch(function (e) { console.error('Vault save failed:', e); return false; });
     return saveChain;
   }
@@ -1783,6 +1813,15 @@
     return dur;
   }
 
+  var VALID_MODES = ['passcode', 'pin4', 'pattern', 'password', 'ultra'];
+  function modeFromHint(h) { return VALID_MODES.indexOf(h) !== -1 ? h : 'passcode'; }
+  function ensureModeHint() {
+    if (isGuest || !vaultRawMemory || !vaultPayload) return;
+    if (vaultRawMemory.mode !== currentMode && VALID_MODES.indexOf(currentMode) !== -1) {
+      vaultRawMemory.mode = currentMode;
+      saveVault();
+    }
+  }
   function getMode() { return currentMode || 'passcode'; }
   function isPasswordMode() { return getMode() !== 'passcode' && getMode() !== 'guest'; }
   function getRequiredLen() {
@@ -2202,6 +2241,7 @@
       currentMode = payload.mode || 'passcode';
       vaultLockedSoft = false;
       verifying = false;
+      ensureModeHint();
       onCorrect();
     } catch (e) {
       verifying = false; entered = ''; renderDots();
@@ -2264,6 +2304,7 @@
       vaultCEK = cek; vaultPayload = payload;
       currentMode = payload.mode || 'passcode';
       vaultLockedSoft = false;
+      ensureModeHint();
       setGateMsg('Verified.', 'ok');
       onCorrect();
     } catch (err) {
@@ -2311,6 +2352,7 @@
       currentMode = payload.mode || 'passcode';
       vaultLockedSoft = false;
       verifying = false;
+      ensureModeHint();
       recoveryInput.value = '';
       resetLockState();
       onCorrect();
@@ -2444,7 +2486,7 @@
     }
     if (!raw.kek || !raw.kek.pass || raw.v !== VAULT_VERSION) { setWelcomeMsg('Vault uses an unsupported format.', 'err'); return; }
     vaultRawMemory = raw; vaultCEK = null; vaultPayload = null;
-    currentMode = 'passcode';
+    currentMode = modeFromHint(raw.mode);
     hideWelcome();
     gate.style.display = ''; gate.classList.remove('hidden');
     var ls = getLockState();
@@ -2506,6 +2548,7 @@
   var setupLegacyType = null;
   var setupLegacyFirstPattern = null;
   var setupPatternCtl = null;
+  var setupPatternBusy = false;
 
   function showSetupStep(name) {
     for (var i = 0; i < setupSteps.length; i++) setupSteps[i].hidden = setupSteps[i].getAttribute('data-step') !== name;
@@ -2580,9 +2623,13 @@
       setTimeout(function () { if (setupPatternCtl) setupPatternCtl.reset(); }, 500);
       return;
     }
+    if (setupPatternBusy) return;
+    setupPatternBusy = true;
     setupPatternMsg.textContent = 'Pattern confirmed.';
     setupPatternMsg.className = 'pattern-msg ok';
-    performSetupEncryption(cred, 'pattern');
+    performSetupEncryption(cred, 'pattern', setupPatternMsg).then(function () {
+      setupPatternBusy = false; setupLegacyFirstPattern = null;
+    });
   }
 
   setupPin4Submit.addEventListener('click', function () {
@@ -2592,7 +2639,7 @@
     if (isWeakPin4(p1)) { setupPin4Msg.textContent = 'Too predictable. Try another.'; setupPin4Msg.className = 'form-msg err'; return; }
     if (p1 !== p2) { setupPin4Msg.textContent = 'PINs do not match.'; setupPin4Msg.className = 'form-msg err'; return; }
     setupPin4Msg.textContent = '';
-    performSetupEncryption(p1, 'pin4');
+    performSetupEncryption(p1, 'pin4', setupPin4Msg);
   });
 
   legacyChoiceBack.addEventListener('click', function () { showSetupStep('choose'); });
@@ -2711,6 +2758,7 @@
       var enc = await encryptWithCEK(cek, payload);
       var newRaw = {
         v: VAULT_VERSION,
+        mode: mode,
         kek: {
           pass: { salt: b64(salt), iterations: iters, wrappedCek: wrapped },
           backup: { salt: b64(bSalt), iterations: DEFAULT_ITERATIONS, wrappedCek: bWrapped }
@@ -3505,8 +3553,7 @@
   switchModeBtn.addEventListener('click', function () {
     if (isGuest) { showToast('Sign in with Google for more features'); return; }
     var mode = getMode();
-    var goingToPassword = (mode !== 'password');
-    if (mode === 'ultra') goingToPassword = false;
+    var goingToPassword = (mode === 'passcode');
     switchCurLabel.textContent = (mode === 'passcode') ? 'Current Passcode' : 'Current Credential';
     switchNewLabel.textContent = goingToPassword ? 'New Password' : 'New Passcode';
     switchCfmLabel.textContent = goingToPassword ? 'Confirm New Password' : 'Confirm New Passcode';
@@ -3521,7 +3568,7 @@
       switchCfm.placeholder = 'Minimum ' + MIN_PASSWORD_LEN + ' characters';
     } else {
       switchCur.classList.remove('digits'); switchCur.removeAttribute('maxlength'); switchCur.removeAttribute('inputmode');
-      switchCur.placeholder = 'Current credential';
+      switchCur.placeholder = (mode === 'pattern') ? 'Pattern as dots, e.g. 0-1-2-5' : 'Current credential';
       switchNew.classList.add('digits'); switchNew.setAttribute('maxlength', '6'); switchNew.setAttribute('inputmode', 'numeric');
       switchNew.placeholder = '••••••';
       switchCfm.classList.add('digits'); switchCfm.setAttribute('maxlength', '6'); switchCfm.setAttribute('inputmode', 'numeric');
@@ -3542,7 +3589,7 @@
     if (isGuest) return;
     var cur = switchCur.value, nw = switchNew.value, cf = switchCfm.value;
     var mode = getMode();
-    var goingToPassword = (mode !== 'password');
+    var goingToPassword = (mode === 'passcode');
     if (goingToPassword) {
       if (nw.length < MIN_PASSWORD_LEN) { switchMsg.textContent = 'Password must be at least ' + MIN_PASSWORD_LEN + ' characters.'; switchMsg.className = 'form-msg err'; return; }
       if (nw !== cf) { switchMsg.textContent = 'Passwords do not match.'; switchMsg.className = 'form-msg err'; return; }
@@ -3791,6 +3838,7 @@
       var newEnc = await encryptWithCEK(cek, newPayload);
       var newRaw = {
         v: VAULT_VERSION,
+        mode: modeFromHint(newPayload.mode),
         kek: { pass: { salt: b64(newSalt), iterations: DEFAULT_ITERATIONS, wrappedCek: wrapped } },
         enc: newEnc
       };
@@ -4112,7 +4160,7 @@
         return;
       }
       vaultRawMemory = raw; vaultCEK = null; vaultPayload = null;
-      currentMode = 'passcode';
+      currentMode = modeFromHint(raw.mode);
       hideWelcome();
       gate.style.display = ''; gate.classList.remove('hidden');
       var ls = getLockState();
