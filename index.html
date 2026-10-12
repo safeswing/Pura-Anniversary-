@@ -482,6 +482,10 @@
   .note-delete{ border:0; background:transparent; color:rgba(255,138,138,.7); font-family:inherit; font-size:10.5px;
     font-weight:600; letter-spacing:.12em; text-transform:uppercase; cursor:pointer; padding:4px 6px; border-radius:6px; }
   .note-delete:hover{ background:rgba(255,138,138,.12); color:#ff8a8a; }
+  .note-actions{ display:flex; align-items:center; gap:4px; }
+  .note-edit{ border:0; background:transparent; color:rgba(150,200,255,.8); font-family:inherit; font-size:10.5px;
+    font-weight:600; letter-spacing:.12em; text-transform:uppercase; cursor:pointer; padding:4px 6px; border-radius:6px; }
+  .note-edit:hover{ background:rgba(150,200,255,.12); color:#9fd0ff; }
   .note-empty{ text-align:center; padding:30px 10px; font-size:13px; color:rgba(244,244,246,.36); }
   .note-locked{ text-align:center; padding:30px 16px; display:flex; flex-direction:column; align-items:center; gap:12px; }
   .note-locked svg{ width:30px; height:30px; color:rgba(255,255,255,.35); }
@@ -3158,6 +3162,20 @@
   var RETIREMENT_DATE = new Date(2026, 9, 8);
   var RETIREMENT_LABEL = 'Retirement Date';
   var MINI_MAX_DAYS = 600;
+  function getMiniStart() {
+    var ts = vaultPayload && vaultPayload.miniStart;
+    if (typeof ts === 'number' && isFinite(ts)) return new Date(ts);
+    var t = new Date(); t.setHours(0, 0, 0, 0);
+    if (vaultPayload) {
+      vaultPayload.miniStart = t.getTime();
+      try { var pr = saveVault(); if (pr && pr.catch) pr.catch(function () {}); } catch (e) {}
+    }
+    return t;
+  }
+  function miniDate(n) { var st = getMiniStart(); return new Date(st.getFullYear(), st.getMonth(), st.getDate() + n - 1); }
+  function capsuleKind(c) { return c && c.kind === 'm' ? 'm' : 'a'; }
+  function capsuleDate(kind, n) { return kind === 'm' ? miniDate(n) : new Date(FIRST_YEAR + n - 1, MONTH, DAY); }
+  function capsuleMax(kind) { return kind === 'm' ? MINI_MAX_DAYS : TOTAL; }
   var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
   function ordinal(n) {
@@ -3204,6 +3222,7 @@
     if (o.isRetirement) card.classList.add('retirement');
     else if (o.deep) card.classList.add('deep');
     card.setAttribute('data-card-id', o.id);
+    card.setAttribute('data-ts', String(o.dateObj.getTime()));
     var badge = document.createElement('div');
     badge.className = 'badge' + (o.badgeSmall ? ' small' : '');
     badge.textContent = o.badgeText;
@@ -3240,7 +3259,6 @@
   function teardownLazy() { if (lazyObserver) { lazyObserver.disconnect(); lazyObserver = null; } }
   function setupLazyMini() {
     teardownLazy();
-    var today = new Date(); today.setHours(0, 0, 0, 0);
     var rendered = 0;
     var sentinel = document.createElement('div');
     sentinel.id = 'lazySentinel';
@@ -3251,8 +3269,7 @@
       var frag = document.createDocumentFragment();
       for (var i = rendered; i < end; i++) {
         var dayNum = i + 1;
-        var when = new Date(today);
-        when.setDate(today.getDate() + i);
+        var when = miniDate(dayNum);
         var passed = isCardUnlocked(when);
         var card = createCard({ id: 'm' + dayNum, stateClass: passed ? 'past' : 'future', deep: dayNum > 30,
           badgeText: dayNum, title: ordinal(dayNum) + ' Mini Anniversary',
@@ -3307,6 +3324,23 @@
     else { btnMini.classList.add('active'); btnAnn.classList.remove('active'); renderMiniAnniversaries(); }
     searchEl.value = ''; clearEl.classList.remove('show');
   }
+  function refreshCardTimes() {
+    var cards = listEl.querySelectorAll('.card[data-ts]');
+    for (var i = 0; i < cards.length; i++) {
+      var c = cards[i];
+      var d = new Date(parseInt(c.getAttribute('data-ts'), 10));
+      var h = c.querySelector('.hours');
+      if (h) h.textContent = hoursLeft(d);
+      if (c.classList.contains('retirement')) continue;
+      var passed = isCardUnlocked(d);
+      c.classList.toggle('past', passed);
+      c.classList.toggle('future', !passed);
+    }
+  }
+  setInterval(refreshCardTimes, 30000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) refreshCardTimes(); });
+  window.addEventListener('focus', refreshCardTimes);
+  window.addEventListener('pageshow', refreshCardTimes);
   btnAnn.addEventListener('click', function () { switchView('anniversary'); });
   btnMini.addEventListener('click', function () { switchView('mini'); });
   refreshBtn.addEventListener('click', function () { switchView(currentView); });
@@ -3342,15 +3376,17 @@
 
   var activeCardId = null;
   var activeCardNum = null;
+  var activeCardKind = null;
+  var editIndex = -1;
 
   function openMenu(id) {
-    activeCardId = id; activeCardNum = null;
+    activeCardId = id; activeCardNum = null; activeCardKind = null;
     var titleText = '', dateText = '';
     if (id === 'ret') { titleText = RETIREMENT_LABEL; dateText = formatDate(RETIREMENT_DATE); }
-    else if (id.charAt(0) === 'a') { var n = parseInt(id.slice(1), 10); activeCardNum = n;
+    else if (id.charAt(0) === 'a') { var n = parseInt(id.slice(1), 10); activeCardNum = n; activeCardKind = 'a';
       var when = new Date(FIRST_YEAR + n - 1, MONTH, DAY); titleText = ordinal(n) + ' Anniversary'; dateText = formatDate(when); }
-    else if (id.charAt(0) === 'm') { var n2 = parseInt(id.slice(1), 10);
-      var t = new Date(); t.setHours(0, 0, 0, 0); t.setDate(t.getDate() + (n2 - 1));
+    else if (id.charAt(0) === 'm') { var n2 = parseInt(id.slice(1), 10); activeCardNum = n2; activeCardKind = 'm';
+      var t = miniDate(n2);
       titleText = ordinal(n2) + ' Mini Anniversary'; dateText = formatDate(t); }
     menuTitle.textContent = titleText;
     menuSub.textContent = dateText;
@@ -3358,15 +3394,13 @@
     var noteArr = notes[id] || [];
     notesCount.textContent = noteArr.length > 0 ? String(noteArr.length) : '';
     var capsules = getCapsules();
-    var specials = activeCardNum !== null ? capsules.filter(function (c) { return c.target === activeCardNum; }) : [];
+    var specials = activeCardNum !== null ? capsules.filter(function (c) { return c.target === activeCardNum && capsuleKind(c) === activeCardKind; }) : [];
     specialCount.textContent = specials.length > 0 ? String(specials.length) : '';
     capsuleBtn.style.display = activeCardNum !== null ? '' : 'none';
     if (activeCardNum === null) specialBtn.style.display = 'none';
     else {
       specialBtn.style.display = '';
-      var targetDate = new Date(FIRST_YEAR + activeCardNum - 1, MONTH, DAY);
-      var today = new Date(); today.setHours(0, 0, 0, 0);
-      specialBtn.disabled = !(targetDate.getTime() <= today.getTime());
+      specialBtn.disabled = !(capsuleDate(activeCardKind, activeCardNum).getTime() <= Date.now());
     }
     menuOverlay.classList.add('open');
   }
@@ -3401,24 +3435,40 @@
   var unlockPreview = document.getElementById('unlockPreview');
   var editorMode = 'note';
 
+  var targetLabel = document.querySelector('label[for="targetInput"]');
   function updateUnlockPreview() {
+    var kind = activeCardKind || 'a';
     var n = parseInt(targetInput.value, 10);
-    if (isNaN(n) || n < 1 || n > TOTAL) { unlockPreview.textContent = 'Unlocks: --'; unlockPreview.style.color = 'rgba(244,244,246,.55)'; return; }
-    var d = new Date(FIRST_YEAR + n - 1, MONTH, DAY);
-    var today = new Date(); today.setHours(0, 0, 0, 0);
-    if (d.getTime() <= today.getTime()) { unlockPreview.textContent = 'Already unlocked (' + formatDate(d) + ')'; unlockPreview.style.color = '#8ef0b5'; }
+    if (isNaN(n) || n < 1 || n > capsuleMax(kind)) { unlockPreview.textContent = 'Unlocks: --'; unlockPreview.style.color = 'rgba(244,244,246,.55)'; return; }
+    var d = capsuleDate(kind, n);
+    if (d.getTime() <= Date.now()) { unlockPreview.textContent = 'Already unlocked (' + formatDate(d) + ')'; unlockPreview.style.color = '#8ef0b5'; }
     else { unlockPreview.textContent = 'Unlocks: ' + formatDate(d); unlockPreview.style.color = 'rgba(244,244,246,.55)'; }
   }
-  function openEditor(mode) {
+  function openEditor(mode, idx) {
     editorMode = mode;
     editorText.value = ''; editorMsg.textContent = ''; editorMsg.className = 'form-msg';
     if (mode === 'note') { editorTitle.textContent = 'Add Note'; editorSub.textContent = menuTitle.textContent; capsuleTargetField.style.display = 'none'; }
-    else { editorTitle.textContent = 'Write Time Capsule'; editorSub.textContent = 'Opens when a future anniversary arrives';
-      capsuleTargetField.style.display = 'flex'; var def = activeCardNum || 10; targetInput.value = Math.max(1, Math.min(TOTAL, def)); updateUnlockPreview(); }
+    else if (mode === 'edit') {
+      editIndex = idx;
+      var arr = getNotes()[activeCardId] || [];
+      editorTitle.textContent = 'Edit Note'; editorSub.textContent = menuTitle.textContent; capsuleTargetField.style.display = 'none';
+      editorText.value = arr[idx] ? arr[idx].text : '';
+    }
+    else {
+      var kind = activeCardKind || 'a';
+      var mx = capsuleMax(kind);
+      editorTitle.textContent = 'Write Time Capsule'; editorSub.textContent = 'Opens when a future ' + (kind === 'm' ? 'mini anniversary' : 'anniversary') + ' arrives';
+      if (targetLabel) targetLabel.textContent = kind === 'm' ? 'Target Mini Anniversary' : 'Target Anniversary';
+      targetInput.max = String(mx);
+      capsuleTargetField.style.display = 'flex'; var def = activeCardNum || 10; targetInput.value = Math.max(1, Math.min(mx, def)); updateUnlockPreview(); }
     editorOverlay.classList.add('open');
     setTimeout(function () { editorText.focus(); }, 350);
   }
-  function closeEditorPanel() { editorOverlay.classList.remove('open'); }
+  function closeEditorPanel() {
+    var wasEdit = editorMode === 'edit' && editorOverlay.classList.contains('open');
+    editorOverlay.classList.remove('open');
+    if (wasEdit) { editorMode = 'note'; openViewer('notes'); }
+  }
   closeEditor.addEventListener('click', closeEditorPanel);
   editorOverlay.addEventListener('click', function (e) { if (e.target === editorOverlay) closeEditorPanel(); });
   targetInput.addEventListener('input', updateUnlockPreview);
@@ -3433,11 +3483,21 @@
       refreshCardIndicator(activeCardId);
       editorMsg.textContent = 'Note saved.'; editorMsg.className = 'form-msg ok';
       setTimeout(closeEditorPanel, 700);
+    } else if (editorMode === 'edit') {
+      var cur = getNotes();
+      var list = cur[activeCardId] || [];
+      if (!list[editIndex]) { editorMsg.textContent = 'This note no longer exists.'; editorMsg.className = 'form-msg err'; return; }
+      list[editIndex].text = text;
+      list[editIndex].editedAt = Date.now();
+      setNotes(cur);
+      editorMsg.textContent = 'Note updated.'; editorMsg.className = 'form-msg ok';
+      setTimeout(closeEditorPanel, 700);
     } else {
+      var kind = activeCardKind || 'a';
       var n = parseInt(targetInput.value, 10);
-      if (isNaN(n) || n < 1 || n > TOTAL) { editorMsg.textContent = 'Target must be between 1 and ' + TOTAL + '.'; editorMsg.className = 'form-msg err'; return; }
+      if (isNaN(n) || n < 1 || n > capsuleMax(kind)) { editorMsg.textContent = 'Target must be between 1 and ' + capsuleMax(kind) + '.'; editorMsg.className = 'form-msg err'; return; }
       var capsules = getCapsules();
-      capsules.push({ target: n, text: text, createdAt: Date.now() });
+      capsules.push({ kind: kind, target: n, text: text, createdAt: Date.now() });
       setCapsules(capsules);
       editorMsg.textContent = 'Time capsule sealed.'; editorMsg.className = 'form-msg ok';
       setTimeout(closeEditorPanel, 800);
@@ -3474,9 +3534,14 @@
         var meta = document.createElement('div'); meta.className = 'note-meta';
         var when = document.createElement('span');
         var d = new Date(note.createdAt);
-        when.textContent = formatDate(d) + ' · ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+        when.textContent = formatDate(d) + ' · ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + (note.editedAt ? ' · edited' : '');
         var del = document.createElement('button');
         del.type = 'button'; del.className = 'note-delete'; del.textContent = 'Delete';
+        var edit = document.createElement('button');
+        edit.type = 'button'; edit.className = 'note-edit'; edit.textContent = 'Edit';
+        edit.addEventListener('click', function () { closeViewerPanel(); openEditor('edit', idx); });
+        var actions = document.createElement('div'); actions.className = 'note-actions';
+        actions.appendChild(edit); actions.appendChild(del);
         del.addEventListener('click', function () {
           var cur = getNotes();
           if (cur[activeCardId]) {
@@ -3487,7 +3552,7 @@
             openViewer('notes');
           }
         });
-        meta.appendChild(when); meta.appendChild(del);
+        meta.appendChild(when); meta.appendChild(actions);
         item.appendChild(text); item.appendChild(meta);
         viewerList.appendChild(item);
       })(arr[i], i);
@@ -3496,11 +3561,10 @@
   function renderSpecialList() {
     var capsules = getCapsules();
     var target = activeCardNum;
-    var mine = capsules.filter(function (c) { return c.target === target; });
+    var mine = capsules.filter(function (c) { return c.target === target && capsuleKind(c) === activeCardKind; });
     if (mine.length === 0) { viewerList.innerHTML = '<div class="note-empty">No special notes are aimed at this anniversary.</div>'; return; }
-    var targetDate = new Date(FIRST_YEAR + target - 1, MONTH, DAY);
-    var today = new Date(); today.setHours(0, 0, 0, 0);
-    var unlocked = targetDate.getTime() <= today.getTime();
+    var targetDate = capsuleDate(activeCardKind, target);
+    var unlocked = targetDate.getTime() <= Date.now();
     if (!unlocked) {
       viewerList.innerHTML =
         '<div class="note-locked">' +
@@ -4079,6 +4143,7 @@
   });
   function buildExportPayload(includeMeta) {
     var data = { app: 'Pura Anniversary', version: 17, exportedAt: new Date().toISOString(), notes: getNotes(), capsules: getCapsules() };
+    if (vaultPayload && vaultPayload.miniStart) data.miniStart = vaultPayload.miniStart;
     if (includeMeta) data.passwordMode = getMode();
     return data;
   }
@@ -4152,6 +4217,7 @@
         setupComplete: true,
         mode: oldPayload.mode || oldPayload.passwordMode || 'passcode',
         notes: oldPayload.notes || {}, capsules: oldPayload.capsules || [], revert: null,
+        miniStart: oldPayload.miniStart,
         settings: oldPayload.settings || { idleMs: 300000, strictLock: false, visibilityLock: true }
       };
       var newEnc = await encryptWithCEK(cek, newPayload);
@@ -4184,6 +4250,7 @@
         if (isGuest) {
           if (data.notes) vaultPayload.notes = data.notes;
           if (data.capsules) vaultPayload.capsules = data.capsules;
+          if (typeof data.miniStart === 'number') vaultPayload.miniStart = data.miniStart;
           await saveVault();
           showDataMsg('Imported to guest vault. Reloading…', 'ok');
           setTimeout(function () { location.reload(); }, 900);
@@ -4191,7 +4258,7 @@
         }
         if (data.v === VAULT_VERSION && data.kek && data.enc) { saveVaultRaw(data); showDataMsg('Vault imported. Reloading…', 'ok'); setTimeout(function () { location.reload(); }, 900); return; }
         if (data.v && data.kdf && data.enc && !data.kek) { pendingLegacyData = data; importOldPass.value = ''; importOldMsg.textContent = ''; importOldMsg.className = 'form-msg'; importOldOverlay.classList.add('open'); setTimeout(function () { importOldPass.focus(); }, 300); return; }
-        if (data.notes || data.capsules) { if (data.notes) vaultPayload.notes = data.notes; if (data.capsules) vaultPayload.capsules = data.capsules; await saveVault(); showDataMsg('Imported. Reloading…', 'ok'); setTimeout(function () { location.reload(); }, 900); return; }
+        if (data.notes || data.capsules) { if (data.notes) vaultPayload.notes = data.notes; if (data.capsules) vaultPayload.capsules = data.capsules; if (typeof data.miniStart === 'number') vaultPayload.miniStart = data.miniStart; await saveVault(); showDataMsg('Imported. Reloading…', 'ok'); setTimeout(function () { location.reload(); }, 900); return; }
         showDataMsg('Unrecognized file format.', 'err');
       } catch (err) { showDataMsg('Invalid file.', 'err'); }
     };
