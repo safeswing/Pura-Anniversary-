@@ -1276,6 +1276,8 @@
           <button class="close-btn" id="closeDevA" type="button" aria-label="Close">&times;</button>
         </div>
         <p class="export-sub">Enter the magic sentence to unlock developer mode.</p>
+        <button class="btn ghost" id="requestBtn" type="button">Request the magic sentence</button>
+        <p class="form-msg" id="requestMsg"></p>
         <div class="field">
           <input id="magicInput" type="password" placeholder="Magic sentence" autocomplete="off" spellcheck="false">
         </div>
@@ -1299,16 +1301,12 @@
             <option value="huawei">Huawei</option>
             <option value="honor">Honor</option>
             <option value="samsung">Samsung</option>
+            <option value="vivo">vivo</option>
           </select>
         </div>
         <p class="mode-hint">Simulation overrides device model and OS, and disables biometric unlock to prevent conflicts.</p>
         <p class="mode-hint warn" id="devTestBadge" style="display:none;">Test Mode active: biometric is disabled.</p>
         <button class="btn ghost" id="returnDefaultBtn" type="button">Return to Default</button>
-        <div class="divider tight"></div>
-        <p class="sec-title">External Link</p>
-        <p class="mode-hint">Open the project's TikTok page in a new tab.</p>
-        <button class="btn ghost" id="requestBtn" type="button">Request</button>
-        <p class="form-msg" id="requestMsg"></p>
       </div>
     </div>
   </div>
@@ -1984,6 +1982,7 @@
     if (simulatedDevice === 'huawei') return 'Huawei P60 Pro';
     if (simulatedDevice === 'honor') return 'Honor Magic 5 Pro';
     if (simulatedDevice === 'samsung') return 'Samsung Galaxy S24 Ultra';
+    if (simulatedDevice === 'vivo') return 'vivo X100 Pro';
     return null;
   }
   function getSimulatedOS() {
@@ -1992,6 +1991,7 @@
     if (simulatedDevice === 'huawei') return 'HarmonyOS 4.0';
     if (simulatedDevice === 'honor') return 'MagicOS 8.0';
     if (simulatedDevice === 'samsung') return 'Android 14';
+    if (simulatedDevice === 'vivo') return 'Funtouch OS 14 (Android 14)';
     return null;
   }
   function getBioBlockReason() {
@@ -3162,16 +3162,8 @@
   var RETIREMENT_DATE = new Date(2026, 9, 8);
   var RETIREMENT_LABEL = 'Retirement Date';
   var MINI_MAX_DAYS = 600;
-  function getMiniStart() {
-    var ts = vaultPayload && vaultPayload.miniStart;
-    if (typeof ts === 'number' && isFinite(ts)) return new Date(ts);
-    var t = new Date(); t.setHours(0, 0, 0, 0);
-    if (vaultPayload) {
-      vaultPayload.miniStart = t.getTime();
-      try { var pr = saveVault(); if (pr && pr.catch) pr.catch(function () {}); } catch (e) {}
-    }
-    return t;
-  }
+  var MINI_START = new Date(2026, 9, 12);
+  function getMiniStart() { return MINI_START; }
   function miniDate(n) { var st = getMiniStart(); return new Date(st.getFullYear(), st.getMonth(), st.getDate() + n - 1); }
   function capsuleKind(c) { return c && c.kind === 'm' ? 'm' : 'a'; }
   function capsuleDate(kind, n) { return kind === 'm' ? miniDate(n) : new Date(FIRST_YEAR + n - 1, MONTH, DAY); }
@@ -4143,7 +4135,6 @@
   });
   function buildExportPayload(includeMeta) {
     var data = { app: 'Pura Anniversary', version: 17, exportedAt: new Date().toISOString(), notes: getNotes(), capsules: getCapsules() };
-    if (vaultPayload && vaultPayload.miniStart) data.miniStart = vaultPayload.miniStart;
     if (includeMeta) data.passwordMode = getMode();
     return data;
   }
@@ -4217,7 +4208,6 @@
         setupComplete: true,
         mode: oldPayload.mode || oldPayload.passwordMode || 'passcode',
         notes: oldPayload.notes || {}, capsules: oldPayload.capsules || [], revert: null,
-        miniStart: oldPayload.miniStart,
         settings: oldPayload.settings || { idleMs: 300000, strictLock: false, visibilityLock: true }
       };
       var newEnc = await encryptWithCEK(cek, newPayload);
@@ -4250,7 +4240,6 @@
         if (isGuest) {
           if (data.notes) vaultPayload.notes = data.notes;
           if (data.capsules) vaultPayload.capsules = data.capsules;
-          if (typeof data.miniStart === 'number') vaultPayload.miniStart = data.miniStart;
           await saveVault();
           showDataMsg('Imported to guest vault. Reloading…', 'ok');
           setTimeout(function () { location.reload(); }, 900);
@@ -4258,7 +4247,7 @@
         }
         if (data.v === VAULT_VERSION && data.kek && data.enc) { saveVaultRaw(data); showDataMsg('Vault imported. Reloading…', 'ok'); setTimeout(function () { location.reload(); }, 900); return; }
         if (data.v && data.kdf && data.enc && !data.kek) { pendingLegacyData = data; importOldPass.value = ''; importOldMsg.textContent = ''; importOldMsg.className = 'form-msg'; importOldOverlay.classList.add('open'); setTimeout(function () { importOldPass.focus(); }, 300); return; }
-        if (data.notes || data.capsules) { if (data.notes) vaultPayload.notes = data.notes; if (data.capsules) vaultPayload.capsules = data.capsules; if (typeof data.miniStart === 'number') vaultPayload.miniStart = data.miniStart; await saveVault(); showDataMsg('Imported. Reloading…', 'ok'); setTimeout(function () { location.reload(); }, 900); return; }
+        if (data.notes || data.capsules) { if (data.notes) vaultPayload.notes = data.notes; if (data.capsules) vaultPayload.capsules = data.capsules; await saveVault(); showDataMsg('Imported. Reloading…', 'ok'); setTimeout(function () { location.reload(); }, 900); return; }
         showDataMsg('Unrecognized file format.', 'err');
       } catch (err) { showDataMsg('Invalid file.', 'err'); }
     };
@@ -4293,12 +4282,36 @@
   });
 
   var deviceInfo = document.getElementById('deviceInfo');
+  var deviceHints = null;
+  function loadDeviceHints() {
+    try {
+      if (navigator.userAgentData && navigator.userAgentData.getHighEntropyValues) {
+        navigator.userAgentData.getHighEntropyValues(['model', 'platformVersion']).then(function (v) {
+          deviceHints = v || null; renderDeviceInfo();
+        }).catch(function () {});
+      }
+    } catch (e) {}
+  }
+  function brandModel(m) {
+    m = (m || '').trim();
+    if (!m || m === 'K') return '';
+    if (/^vivo/i.test(m)) return m;
+    if (/^V\d{3,4}[A-Z]{0,3}$/.test(m)) return 'vivo ' + m;
+    return m;
+  }
   function detectDeviceModel() {
     var u = navigator.userAgent || '';
+    var hinted = brandModel(deviceHints && deviceHints.model);
+    if (hinted) return hinted;
     if (/iPhone/.test(u)) return 'iPhone';
     if (/iPad/.test(u) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) return 'iPad';
     var m = u.match(/Android [^;]+;\s*([^)]+?)(?:\s+Build|\s*\))/);
-    if (m) return m[1].trim();
+    if (m) {
+      var fromUA = brandModel(m[1]);
+      if (fromUA) return fromUA;
+      if (/vivo/i.test(u)) return 'vivo (model hidden by browser)';
+      return 'Android device (model hidden by browser)';
+    }
     if (/Macintosh/.test(u)) return 'Mac';
     if (/Windows/.test(u)) return 'Windows PC';
     if (/CrOS/.test(u)) return 'Chromebook';
@@ -4317,7 +4330,11 @@
     if (/Windows/.test(u)) return 'Windows';
     if (/iPhone|iPad|iPod/.test(u)) return 'iOS / iPadOS';
     if (/Mac OS X/.test(u)) return 'macOS';
-    if (/Android/.test(u)) { var m = u.match(/Android ([\d.]+)/); return m ? 'Android ' + m[1] : 'Android'; }
+    if (/Android/.test(u)) {
+      var pv = deviceHints && deviceHints.platformVersion ? String(deviceHints.platformVersion).split('.')[0] : '';
+      if (pv && pv !== '0') return 'Android ' + pv;
+      var m = u.match(/Android ([\d.]+)/); return m ? 'Android ' + m[1] : 'Android';
+    }
     if (/CrOS/.test(u)) return 'ChromeOS';
     if (/Linux/.test(u)) return 'Linux';
     return 'Unknown';
@@ -4353,6 +4370,8 @@
     for (var i = 0; i < rows.length; i++) html += '<div class="device-row"><span class="device-key">' + rows[i][0] + '</span><span class="device-val">' + rows[i][1] + '</span></div>';
     deviceInfo.innerHTML = html;
   }
+
+  loadDeviceHints();
 
   var openDevBtn = document.getElementById('openDevBtn');
   var devOverlay = document.getElementById('devOverlay');
